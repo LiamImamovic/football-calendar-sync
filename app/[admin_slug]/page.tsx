@@ -1,0 +1,679 @@
+"use client";
+
+import logo from "@/assets/images/logo-andernos-sport.avif";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { supabase } from "@/lib/supabase";
+import { copyToClipboard, getMapsUrl, randomUUID, shareUrl } from "@/lib/utils";
+import type { CalendarEvent, Calendar as CalendarType } from "@/types/database";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { differenceInDays, format, isToday, isTomorrow } from "date-fns";
+import { fr } from "date-fns/locale";
+import {
+  Check,
+  Copy,
+  MapPin,
+  Pencil,
+  Plus,
+  Share2,
+  Shield,
+  Trash2,
+} from "lucide-react";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+const eventSchema = z.object({
+  date: z.date(),
+  time: z.string().regex(/^\d{1,2}:\d{2}$/, "Format HH:MM"),
+  opponent: z.string().min(1, "Obligatoire"),
+  location: z.string().min(1, "Obligatoire"),
+  is_home: z.boolean(),
+});
+
+type EventFormValues = z.infer<typeof eventSchema>;
+
+const DOMICILE_ADDRESS =
+  "STADE JACQUES ROSAZZA 3 AV PIERRE DE COURBERTIN 33510 - ANDERNOS LES BAINS";
+
+export default function AdminDashboardPage() {
+  const params = useParams();
+  const router = useRouter();
+  const adminSlug = params.admin_slug as string;
+  const [calendar, setCalendar] = useState<CalendarType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [addEventLoading, setAddEventLoading] = useState(false);
+  const [addEventError, setAddEventError] = useState<string | null>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [copiedAdmin, setCopiedAdmin] = useState(false);
+  const [copiedParents, setCopiedParents] = useState(false);
+  const [parentsShareUrl, setParentsShareUrl] = useState("");
+
+  const form = useForm<EventFormValues>({
+    resolver: zodResolver(eventSchema),
+    defaultValues: {
+      date: new Date(),
+      time: "14:00",
+      opponent: "",
+      location: DOMICILE_ADDRESS,
+      is_home: true,
+    },
+  });
+
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from("calendars")
+        .select("*")
+        .eq("admin_slug", adminSlug)
+        .single();
+      if (error || !data) {
+        router.push("/");
+        return;
+      }
+      setCalendar(data as unknown as CalendarType);
+      setLoading(false);
+    }
+    load();
+  }, [adminSlug, router]);
+
+  useEffect(() => {
+    if (calendar?.id && typeof window !== "undefined") {
+      setParentsShareUrl(`${window.location.origin}/s/${calendar.id}`);
+    }
+  }, [calendar?.id]);
+
+  async function onAddEvent(values: EventFormValues) {
+    if (!calendar) return;
+    setAddEventError(null);
+    setAddEventLoading(true);
+    const [h, m] = values.time.split(":").map(Number);
+    const d = new Date(values.date);
+    d.setHours(h, m, 0, 0);
+    const event: CalendarEvent = {
+      id: randomUUID(),
+      date: d.toISOString(),
+      opponent: values.opponent,
+      location: values.location,
+      is_home: values.is_home,
+    };
+    const events = [...(calendar.events || []), event];
+    // Supabase client typings infer 'never' for jsonb update in some setups
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("calendars") as any)
+      .update({ events })
+      .eq("id", calendar.id);
+    setAddEventLoading(false);
+    if (!error) {
+      setCalendar({ ...calendar, events });
+      form.reset({
+        date: new Date(),
+        time: "14:00",
+        opponent: "",
+        location: form.getValues("is_home") ? DOMICILE_ADDRESS : "",
+        is_home: form.getValues("is_home"),
+      });
+    } else {
+      setAddEventError("Erreur lors de l'ajout. Réessayez.");
+    }
+  }
+
+  async function onUpdateEvent(eventId: string, values: EventFormValues) {
+    if (!calendar) return;
+    setAddEventError(null);
+    setAddEventLoading(true);
+    const [h, m] = values.time.split(":").map(Number);
+    const d = new Date(values.date);
+    d.setHours(h, m, 0, 0);
+    const updated: CalendarEvent = {
+      id: eventId,
+      date: d.toISOString(),
+      opponent: values.opponent,
+      location: values.location,
+      is_home: values.is_home,
+    };
+    const events = (calendar.events || []).map((e) =>
+      e.id === eventId ? updated : e,
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("calendars") as any)
+      .update({ events })
+      .eq("id", calendar.id);
+    setAddEventLoading(false);
+    if (!error) {
+      setCalendar({ ...calendar, events });
+      setEditingEventId(null);
+      form.reset({
+        date: new Date(),
+        time: "14:00",
+        opponent: "",
+        location: DOMICILE_ADDRESS,
+        is_home: true,
+      });
+    } else {
+      setAddEventError("Erreur lors de la modification. Réessayez.");
+    }
+  }
+
+  function startEditEvent(ev: CalendarEvent) {
+    form.reset({
+      date: new Date(ev.date),
+      time: format(new Date(ev.date), "HH:mm"),
+      opponent: ev.opponent,
+      location: ev.is_home ? DOMICILE_ADDRESS : ev.location,
+      is_home: ev.is_home,
+    });
+    setEditingEventId(ev.id);
+    setAddEventError(null);
+  }
+
+  function cancelEdit() {
+    setEditingEventId(null);
+    form.reset({
+      date: new Date(),
+      time: "14:00",
+      opponent: "",
+      location: DOMICILE_ADDRESS,
+      is_home: true,
+    });
+  }
+
+  async function onDeleteEvent(eventId: string) {
+    if (!calendar) return;
+    const events = (calendar.events || []).filter((e) => e.id !== eventId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("calendars") as any)
+      .update({ events })
+      .eq("id", calendar.id);
+    if (!error) {
+      setCalendar({ ...calendar, events });
+      if (editingEventId === eventId) cancelEdit();
+    }
+  }
+
+  async function copyShareLink() {
+    if (!calendar) return;
+    const url = `${
+      typeof window !== "undefined" ? window.location.origin : ""
+    }/s/${calendar.id}`;
+    const ok = await copyToClipboard(url);
+    if (ok) {
+      setCopiedParents(true);
+      setTimeout(() => setCopiedParents(false), 2000);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent"
+          aria-hidden
+        />
+      </div>
+    );
+  }
+
+  if (!calendar) return null;
+
+  const events = (calendar.events || []).sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const upcomingCount = events.filter(
+    (e) => new Date(e.date) >= startOfToday,
+  ).length;
+  const nextMatch =
+    upcomingCount > 0
+      ? events.find((e) => new Date(e.date) >= startOfToday)
+      : null;
+  const nextMatchLabel = nextMatch
+    ? isToday(new Date(nextMatch.date))
+      ? "aujourd'hui"
+      : isTomorrow(new Date(nextMatch.date))
+      ? "demain"
+      : differenceInDays(new Date(nextMatch.date), new Date()) <= 7
+      ? `dans ${differenceInDays(new Date(nextMatch.date), new Date())} jours`
+      : format(new Date(nextMatch.date), "d MMM", { locale: fr })
+    : null;
+
+  return (
+    <main className="min-h-[100dvh] p-4 pb-8 max-w-4xl mx-auto">
+      <header className="flex flex-wrap items-center gap-3 mb-8">
+        <Image
+          src={logo}
+          alt="Logo club"
+          className="h-12 w-auto object-contain"
+        />
+        <h1 className="text-2xl font-bold text-foreground">
+          {calendar.team_name}
+        </h1>
+        <span className="inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-2.5 py-0.5 text-xs font-medium">
+          <Shield className="h-3.5 w-3.5" /> Admin
+        </span>
+      </header>
+
+      <section className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              {editingEventId ? "Modifier le match" : "Ajouter un match"}
+            </CardTitle>
+            <CardDescription>
+              {editingEventId
+                ? "Modifiez les champs puis enregistrez."
+                : "Renseignez la date, l'heure, l'adversaire et le lieu."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={form.handleSubmit((values) =>
+                editingEventId
+                  ? onUpdateEvent(editingEventId, values)
+                  : onAddEvent(values),
+              )}
+              className="grid gap-4 grid-cols-1"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={format(form.watch("date"), "yyyy-MM-dd")}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v) form.setValue("date", new Date(v + "T12:00:00"));
+                  }}
+                  className="bg-background text-sm [&::-webkit-datetime-edit]:text-foreground"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time">Heure</Label>
+                <Input
+                  id="time"
+                  type="time"
+                  {...form.register("time")}
+                  className="bg-background text-base [&::-webkit-datetime-edit]:text-foreground"
+                />
+                {form.formState.errors.time && (
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.time.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Adversaire</Label>
+                <Input
+                  placeholder="FC Nantes U13"
+                  {...form.register("opponent")}
+                  className="bg-background"
+                />
+                {form.formState.errors.opponent && (
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.opponent.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Lieu</Label>
+                {form.watch("is_home") ? (
+                  <Input
+                    id="location"
+                    value={DOMICILE_ADDRESS}
+                    readOnly
+                    className="bg-muted/50"
+                  />
+                ) : (
+                  <Input
+                    id="location"
+                    placeholder="Stade de la Beaujoire"
+                    {...form.register("location")}
+                    className="bg-background"
+                  />
+                )}
+                {form.formState.errors.location && (
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.location.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3 py-2">
+                <Switch
+                  id="is_home"
+                  checked={form.watch("is_home")}
+                  onCheckedChange={(v) => {
+                    form.setValue("is_home", v);
+                    form.setValue("location", v ? DOMICILE_ADDRESS : "");
+                  }}
+                />
+                <Label htmlFor="is_home">
+                  {form.watch("is_home") ? "Domicile" : "Extérieur"}
+                </Label>
+              </div>
+              {addEventError && (
+                <p className="text-sm text-red-600">{addEventError}</p>
+              )}
+              <div className="flex gap-2">
+                {editingEventId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={cancelEdit}
+                    disabled={addEventLoading}
+                  >
+                    Annuler
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  className={editingEventId ? "flex-1" : "w-full"}
+                  disabled={addEventLoading}
+                >
+                  {addEventLoading
+                    ? "Enregistrement…"
+                    : editingEventId
+                    ? "Enregistrer"
+                    : "Ajouter au calendrier"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Matchs</CardTitle>
+            <CardDescription>
+              {events.length === 0
+                ? "Liste des matchs à venir et passés."
+                : nextMatchLabel
+                ? `Prochain match : ${nextMatchLabel}.`
+                : ""}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {events.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Aucun match pour l'instant. Ajoutez-en un ci-dessus.
+              </p>
+            ) : (
+              <div className="overflow-x-auto -mx-1">
+                <Table className="min-w-[320px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Match</TableHead>
+                      <TableHead>Lieu</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {events.map((ev) => (
+                      <TableRow key={ev.id}>
+                        <TableCell>
+                          {format(new Date(ev.date), "dd MMM yyyy · HH:mm", {
+                            locale: fr,
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className="inline-block w-2 h-2 rounded-full shrink-0 mr-2 align-middle"
+                            style={{
+                              backgroundColor: ev.is_home
+                                ? "#1A4382"
+                                : "#d97706",
+                            }}
+                            title={ev.is_home ? "Domicile" : "Extérieur"}
+                            aria-hidden
+                          />
+                          {ev.is_home ? (
+                            <>Nous vs {ev.opponent}</>
+                          ) : (
+                            <>{ev.opponent} vs Nous</>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-0.5">
+                            <span>{ev.location}</span>
+                            <a
+                              href={getMapsUrl(ev.location)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline w-fit"
+                            >
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              Voir sur la carte
+                            </a>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-10 shrink-0"
+                              onClick={() => startEditEvent(ev)}
+                              aria-label="Modifier le match"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 size-10 shrink-0"
+                              onClick={() => onDeleteEvent(ev.id)}
+                              aria-label="Supprimer le match"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            {events.length > 0 && (
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full bg-[#1A4382]"
+                    aria-hidden
+                  />
+                  Domicile
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full bg-[#d97706]"
+                    aria-hidden
+                  />
+                  Extérieur
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card className="border-primary/20 bg-secondary/30">
+          <CardHeader>
+            <CardTitle>Partager aux parents</CardTitle>
+            <CardDescription>
+              Envoyez ce lien aux parents pour qu&apos;ils s&apos;abonnent au
+              calendrier sur leur téléphone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-zinc-700 mb-1">
+                Votre accès admin (à enregistrer pour revenir)
+              </p>
+              <p className="text-xs text-zinc-500 mb-2">
+                Gardez ce lien pour modifier le calendrier plus tard.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/${adminSlug}`
+                      : `/${adminSlug}`
+                  }
+                  className="bg-background font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 size-10"
+                  onClick={async () => {
+                    const url =
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/${adminSlug}`
+                        : `/${adminSlug}`;
+                    const ok = await shareUrl(
+                      url,
+                      `Accès admin - ${calendar.team_name}`,
+                      `Lien pour gérer le calendrier : ${url}`,
+                    );
+                    if (!ok) {
+                      const copied = await copyToClipboard(url);
+                      if (copied) {
+                        setCopiedAdmin(true);
+                        setTimeout(() => setCopiedAdmin(false), 2000);
+                      }
+                    }
+                  }}
+                  aria-label="Partager le lien admin"
+                >
+                  {copiedAdmin ? (
+                    <Check className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Share2 className="h-5 w-5" />
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 size-10"
+                  onClick={async () => {
+                    const url =
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/${adminSlug}`
+                        : `/${adminSlug}`;
+                    const ok = await copyToClipboard(url);
+                    if (ok) {
+                      setCopiedAdmin(true);
+                      setTimeout(() => setCopiedAdmin(false), 2000);
+                    }
+                  }}
+                  aria-label="Copier le lien admin"
+                >
+                  {copiedAdmin ? (
+                    <Check className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Copy className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-zinc-700 mb-1">
+                Lien à donner aux parents
+              </p>
+              {parentsShareUrl && (
+                <div className="flex flex-col items-center gap-2 mb-4 p-3 rounded-lg bg-background/60">
+                  <QRCodeSVG
+                    value={parentsShareUrl}
+                    size={160}
+                    level="M"
+                    includeMargin={false}
+                    className="rounded"
+                  />
+                  <p className="text-xs text-zinc-600 text-center">
+                    Les parents flashent ce QR code pour s&apos;abonner au
+                    calendrier
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/s/${calendar.id}`
+                      : `/s/${calendar.id}`
+                  }
+                  className="bg-background font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 size-10"
+                  onClick={async () => {
+                    const url =
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/s/${calendar.id}`
+                        : `/s/${calendar.id}`;
+                    const ok = await shareUrl(
+                      url,
+                      `Calendrier des matchs - ${calendar.team_name}`,
+                      `Abonnez-vous au calendrier des matchs : ${url}`,
+                    );
+                    if (!ok) copyShareLink();
+                  }}
+                  aria-label="Partager le lien parents"
+                >
+                  {copiedParents ? (
+                    <Check className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Share2 className="h-5 w-5" />
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 size-10"
+                  onClick={copyShareLink}
+                  aria-label="Copier le lien parents"
+                >
+                  {copiedParents ? (
+                    <Check className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Copy className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+    </main>
+  );
+}

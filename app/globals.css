@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Couleurs club Andernos Sport: #1A4382 (bleu), #E8C061 (or), #FFFFFF */
+    --club-primary: 214 67% 31%;
+    --club-gold: 41 78% 65%;
+    --club-white: 0 0% 100%;
+    --background: 0 0% 100%;
+    --foreground: 214 67% 31%;
+    --card: 0 0% 100%;
+    --card-foreground: 214 67% 31%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 67% 31%;
+    --primary: 214 67% 31%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 41 78% 92%;
+    --secondary-foreground: 214 67% 31%;
+    --muted: 214 30% 96%;
+    --muted-foreground: 214 40% 40%;
+    --accent: 41 78% 65%;
+    --accent-foreground: 214 67% 31%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 30% 88%;
+    --input: 214 30% 88%;
+    --ring: 214 67% 31%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  /* Évite le zoom auto sur focus des champs (iOS Safari zoom si font-size < 16px) */
+  @media (max-width: 768px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Fond particules : dérive lente */
+@keyframes particle-float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.22;
+  }
+  25% {
+    transform: translate(8px, -12px);
+    opacity: 0.32;
+  }
+  50% {
+    transform: translate(-6px, 8px);
+    opacity: 0.18;
+  }
+  75% {
+    transform: translate(10px, 6px);
+    opacity: 0.28;
+  }
+}
+
+.particle {
+  animation: particle-float ease-in-out infinite;
+}
