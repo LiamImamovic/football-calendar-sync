@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { ParticlesBackground } from "@/components/ParticlesBackground";
 import "./globals.css";
 
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="relative antialiased font-sans bg-background text-foreground min-h-[100dvh] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pb-[env(safe-area-inset-bottom)]">
         <ParticlesBackground />
         {children}
+        <Analytics />
       </body>
     </html>
   );
