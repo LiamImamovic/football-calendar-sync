@@ -1,8 +1,5 @@
 "use client";
 
-/**
- * Fond à particules discret (points animés), déterministe pour éviter tout décalage d’hydratation.
- */
 const PARTICLE_COUNT = 60;
 const PARTICLE_COLOR = "#1A4382"; // bleu club
 

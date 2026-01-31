@@ -4,6 +4,7 @@ export type CalendarEvent = {
   opponent: string;
   location: string;
   is_home: boolean;
+  cancelled?: boolean;
 };
 
 export type Calendar = {

@@ -16,7 +16,6 @@ const CLUB_WHITE = "#FFFFFF";
 const TEXT_DARK = "#1f2937";
 const BORDER = "#e5e7eb";
 
-/** Nombre max de matchs affichés pour tenir sur une seule page A4 */
 const MAX_EVENTS_ONE_PAGE = 18;
 
 const styles = StyleSheet.create({

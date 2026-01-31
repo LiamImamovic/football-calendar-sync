@@ -88,13 +88,18 @@ export default function SubscribePage() {
     now.getMonth(),
     now.getDate(),
   );
+  const notCancelled = (e: CalendarEvent) => !(e.cancelled ?? false);
   const filteredEvents =
     eventFilter === "upcoming"
-      ? allEvents.filter((e) => new Date(e.date) >= startOfToday)
+      ? allEvents.filter(
+          (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
+        )
       : eventFilter === "all"
       ? allEvents
       : eventFilter === "next5"
-      ? allEvents.filter((e) => new Date(e.date) >= now).slice(0, 5)
+      ? allEvents
+          .filter((e) => notCancelled(e) && new Date(e.date) >= now)
+          .slice(0, 5)
       : allEvents.filter((e) => {
           const d = new Date(e.date);
           return (
@@ -104,11 +109,13 @@ export default function SubscribePage() {
         });
 
   const upcomingCount = allEvents.filter(
-    (e) => new Date(e.date) >= startOfToday,
+    (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
   ).length;
   const nextMatch =
     upcomingCount > 0
-      ? allEvents.find((e) => new Date(e.date) >= startOfToday)
+      ? allEvents.find(
+          (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
+        ) ?? null
       : null;
   const nextMatchLabel = nextMatch
     ? isToday(new Date(nextMatch.date))
@@ -120,7 +127,6 @@ export default function SubscribePage() {
       : format(new Date(nextMatch.date), "d MMM", { locale: fr })
     : null;
 
-  /** Charge l'image du logo et la convertit en data URL PNG pour le PDF (compatible @react-pdf/renderer) */
   async function getLogoDataUrl(): Promise<string | null> {
     return new Promise((resolve) => {
       if (typeof window === "undefined") {
@@ -160,10 +166,13 @@ export default function SubscribePage() {
           import("@/components/CalendarPDFDocument"),
         ],
       );
+      const eventsForPdf = filteredEvents.filter(
+        (e: CalendarEvent) => !(e.cancelled ?? false),
+      );
       const blob = await pdf(
         <CalendarPDFDocument
           teamName={calendar.team_name}
-          events={filteredEvents}
+          events={eventsForPdf}
           logoDataUrl={logoDataUrl}
         />,
       ).toBlob();
@@ -344,45 +353,79 @@ export default function SubscribePage() {
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {filteredEvents.map((ev: CalendarEvent) => (
-                    <li
-                      key={ev.id}
-                      className="flex flex-col gap-1 py-3 border-b border-zinc-100 last:border-0"
-                    >
-                      <span className="font-medium text-zinc-900 inline-flex items-center gap-2">
+                  {filteredEvents.map((ev: CalendarEvent) => {
+                    const isCancelled = ev.cancelled ?? false;
+                    return (
+                      <li
+                        key={ev.id}
+                        className={`flex flex-col gap-1 py-3 border-b border-zinc-100 last:border-0 ${
+                          isCancelled
+                            ? "opacity-60 bg-zinc-50/50 rounded-md px-2 -mx-2"
+                            : ""
+                        }`}
+                      >
                         <span
-                          className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{
-                            backgroundColor: ev.is_home ? "#1A4382" : "#d97706",
-                          }}
-                          title={ev.is_home ? "Domicile" : "Extérieur"}
-                          aria-hidden
-                        />
-                        {ev.is_home ? (
-                          <>Nous vs {ev.opponent}</>
-                        ) : (
-                          <>{ev.opponent} vs Nous</>
-                        )}
-                      </span>
-                      <span className="text-sm text-zinc-600">
-                        {format(new Date(ev.date), "EEEE d MMMM · HH:mm", {
-                          locale: fr,
-                        })}
-                      </span>
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="text-zinc-600">{ev.location}</span>
-                        <a
-                          href={getMapsUrl(ev.location)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline py-1.5"
+                          className={`font-medium inline-flex items-center gap-2 ${
+                            isCancelled
+                              ? "text-zinc-500 line-through"
+                              : "text-zinc-900"
+                          }`}
                         >
-                          <MapPin className="h-4 w-4 shrink-0" />
-                          Voir sur la carte
-                        </a>
-                      </div>
-                    </li>
-                  ))}
+                          <span
+                            className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{
+                              backgroundColor: ev.is_home
+                                ? "#1A4382"
+                                : "#d97706",
+                            }}
+                            title={ev.is_home ? "Domicile" : "Extérieur"}
+                            aria-hidden
+                          />
+                          {ev.is_home ? (
+                            <>Nous vs {ev.opponent}</>
+                          ) : (
+                            <>{ev.opponent} vs Nous</>
+                          )}
+                          {isCancelled && (
+                            <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                              Annulé
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className={`text-sm ${
+                            isCancelled
+                              ? "text-zinc-400 line-through"
+                              : "text-zinc-600"
+                          }`}
+                        >
+                          {format(new Date(ev.date), "EEEE d MMMM · HH:mm", {
+                            locale: fr,
+                          })}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <span
+                            className={
+                              isCancelled
+                                ? "text-zinc-400 line-through"
+                                : "text-zinc-600"
+                            }
+                          >
+                            {ev.location}
+                          </span>
+                          <a
+                            href={getMapsUrl(ev.location)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline py-1.5"
+                          >
+                            <MapPin className="h-4 w-4 shrink-0" />
+                            Voir sur la carte
+                          </a>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               {filteredEvents.length > 0 && (

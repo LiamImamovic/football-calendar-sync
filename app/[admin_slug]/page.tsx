@@ -32,6 +32,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  RotateCcw,
   Share2,
   Shield,
   Trash2,
@@ -116,6 +117,7 @@ export default function AdminDashboardPage() {
       opponent: values.opponent,
       location: values.location,
       is_home: values.is_home,
+      cancelled: false,
     };
     const events = [...(calendar.events || []), event];
     // Supabase client typings infer 'never' for jsonb update in some setups
@@ -145,12 +147,14 @@ export default function AdminDashboardPage() {
     const [h, m] = values.time.split(":").map(Number);
     const d = new Date(values.date);
     d.setHours(h, m, 0, 0);
+    const current = (calendar.events || []).find((e) => e.id === eventId);
     const updated: CalendarEvent = {
       id: eventId,
       date: d.toISOString(),
       opponent: values.opponent,
       location: values.location,
       is_home: values.is_home,
+      cancelled: current?.cancelled ?? false,
     };
     const events = (calendar.events || []).map((e) =>
       e.id === eventId ? updated : e,
@@ -198,9 +202,11 @@ export default function AdminDashboardPage() {
     });
   }
 
-  async function onDeleteEvent(eventId: string) {
+  async function onToggleCancelEvent(eventId: string) {
     if (!calendar) return;
-    const events = (calendar.events || []).filter((e) => e.id !== eventId);
+    const events = (calendar.events || []).map((e) =>
+      e.id === eventId ? { ...e, cancelled: !(e.cancelled ?? false) } : e,
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from("calendars") as any)
       .update({ events })
@@ -241,12 +247,15 @@ export default function AdminDashboardPage() {
   );
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
+  const notCancelled = (e: CalendarEvent) => !(e.cancelled ?? false);
   const upcomingCount = events.filter(
-    (e) => new Date(e.date) >= startOfToday,
+    (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
   ).length;
   const nextMatch =
     upcomingCount > 0
-      ? events.find((e) => new Date(e.date) >= startOfToday)
+      ? events.find(
+          (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
+        ) ?? null
       : null;
   const nextMatchLabel = nextMatch
     ? isToday(new Date(nextMatch.date))
@@ -433,68 +442,111 @@ export default function AdminDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {events.map((ev) => (
-                      <TableRow key={ev.id}>
-                        <TableCell>
-                          {format(new Date(ev.date), "dd MMM yyyy · HH:mm", {
-                            locale: fr,
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className="inline-block w-2 h-2 rounded-full shrink-0 mr-2 align-middle"
-                            style={{
-                              backgroundColor: ev.is_home
-                                ? "#1A4382"
-                                : "#d97706",
-                            }}
-                            title={ev.is_home ? "Domicile" : "Extérieur"}
-                            aria-hidden
-                          />
-                          {ev.is_home ? (
-                            <>Nous vs {ev.opponent}</>
-                          ) : (
-                            <>{ev.opponent} vs Nous</>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-0.5">
-                            <span>{ev.location}</span>
-                            <a
-                              href={getMapsUrl(ev.location)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline w-fit"
-                            >
-                              <MapPin className="h-3 w-3 shrink-0" />
-                              Voir sur la carte
-                            </a>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-10 shrink-0"
-                              onClick={() => startEditEvent(ev)}
-                              aria-label="Modifier le match"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 size-10 shrink-0"
-                              onClick={() => onDeleteEvent(ev.id)}
-                              aria-label="Supprimer le match"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {events.map((ev) => {
+                      const isCancelled = ev.cancelled ?? false;
+                      return (
+                        <TableRow
+                          key={ev.id}
+                          className={
+                            isCancelled ? "opacity-60 bg-muted/30" : undefined
+                          }
+                        >
+                          <TableCell
+                            className={
+                              isCancelled
+                                ? "line-through text-muted-foreground"
+                                : undefined
+                            }
+                          >
+                            {format(new Date(ev.date), "dd MMM yyyy · HH:mm", {
+                              locale: fr,
+                            })}
+                          </TableCell>
+                          <TableCell
+                            className={
+                              isCancelled
+                                ? "line-through text-muted-foreground"
+                                : undefined
+                            }
+                          >
+                            <span
+                              className="inline-block w-2 h-2 rounded-full shrink-0 mr-2 align-middle"
+                              style={{
+                                backgroundColor: ev.is_home
+                                  ? "#1A4382"
+                                  : "#d97706",
+                              }}
+                              title={ev.is_home ? "Domicile" : "Extérieur"}
+                              aria-hidden
+                            />
+                            {ev.is_home ? (
+                              <>Nous vs {ev.opponent}</>
+                            ) : (
+                              <>{ev.opponent} vs Nous</>
+                            )}
+                            {isCancelled && (
+                              <span className="ml-2 text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                Annulé
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className={
+                              isCancelled
+                                ? "line-through text-muted-foreground"
+                                : undefined
+                            }
+                          >
+                            <div className="flex flex-col gap-0.5">
+                              <span>{ev.location}</span>
+                              <a
+                                href={getMapsUrl(ev.location)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline w-fit"
+                              >
+                                <MapPin className="h-3 w-3 shrink-0" />
+                                Voir sur la carte
+                              </a>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-10 shrink-0"
+                                onClick={() => startEditEvent(ev)}
+                                aria-label="Modifier le match"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={
+                                  isCancelled
+                                    ? "text-green-600 hover:text-green-700 hover:bg-green-50 size-10 shrink-0"
+                                    : "text-red-600 hover:text-red-700 hover:bg-red-50 size-10 shrink-0"
+                                }
+                                onClick={() => onToggleCancelEvent(ev.id)}
+                                aria-label={
+                                  isCancelled
+                                    ? "Restaurer le match"
+                                    : "Annuler le match"
+                                }
+                              >
+                                {isCancelled ? (
+                                  <RotateCcw className="h-5 w-5" />
+                                ) : (
+                                  <Trash2 className="h-5 w-5" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

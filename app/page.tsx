@@ -87,7 +87,6 @@ export default function LandingPage() {
       setError("Erreur lors de la création. Réessayez.");
       return;
     }
-    // Redirection avec le slug qu'on vient de générer (le .select() peut être vide si RLS bloque la lecture)
     router.push(`/${data?.admin_slug ?? adminSlug}`);
   }
 
