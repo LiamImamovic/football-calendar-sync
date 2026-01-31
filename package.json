@@ -17,6 +17,7 @@
     "@radix-ui/react-switch": "^1.0.3",
     "@react-pdf/renderer": "^4.3.2",
     "@supabase/supabase-js": "^2.45.4",
+    "@vercel/analytics": "^1.6.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
