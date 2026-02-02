@@ -42,6 +42,7 @@ import { useParams, useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 
 const eventSchema = z.object({
@@ -135,8 +136,10 @@ export default function AdminDashboardPage() {
         location: form.getValues("is_home") ? DOMICILE_ADDRESS : "",
         is_home: form.getValues("is_home"),
       });
+      toast.success("Match ajouté");
     } else {
       setAddEventError("Erreur lors de l'ajout. Réessayez.");
+      toast.error("Erreur lors de l'ajout. Réessayez.");
     }
   }
 
@@ -174,8 +177,10 @@ export default function AdminDashboardPage() {
         location: DOMICILE_ADDRESS,
         is_home: true,
       });
+      toast.success("Match modifié");
     } else {
       setAddEventError("Erreur lors de la modification. Réessayez.");
+      toast.error("Erreur lors de la modification. Réessayez.");
     }
   }
 
@@ -204,8 +209,10 @@ export default function AdminDashboardPage() {
 
   async function onToggleCancelEvent(eventId: string) {
     if (!calendar) return;
+    const target = (calendar.events || []).find((e) => e.id === eventId);
+    const willBeCancelled = !(target?.cancelled ?? false);
     const events = (calendar.events || []).map((e) =>
-      e.id === eventId ? { ...e, cancelled: !(e.cancelled ?? false) } : e,
+      e.id === eventId ? { ...e, cancelled: willBeCancelled } : e,
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from("calendars") as any)
@@ -214,6 +221,9 @@ export default function AdminDashboardPage() {
     if (!error) {
       setCalendar({ ...calendar, events });
       if (editingEventId === eventId) cancelEdit();
+      toast.success(willBeCancelled ? "Match annulé" : "Match restauré");
+    } else {
+      toast.error("Une erreur s'est produite. Réessayez.");
     }
   }
 
