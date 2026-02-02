@@ -67,6 +67,13 @@
       font-size: 16px !important;
     }
   }
+  /* Zones tactiles minimales sur mobile (44px recommandé Apple/HID) */
+  @media (max-width: 640px) {
+    select {
+      min-height: 44px;
+      padding: 0.625rem 0.75rem;
+    }
+  }
 }
 
 /* Fond particules : dérive lente */

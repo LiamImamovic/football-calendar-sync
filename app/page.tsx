@@ -149,7 +149,12 @@ export default function LandingPage() {
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full min-h-[48px]"
+            size="lg"
+            disabled={loading}
+          >
             {loading ? "Création…" : "Créer mon calendrier"}
           </Button>
         </form>
@@ -168,7 +173,7 @@ export default function LandingPage() {
                     setSelectedSlug(e.target.value);
                     if (e.target.value) setAccessInput("");
                   }}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
                 >
                   <option value="">— Choisir dans la liste —</option>
                   {calendars.map((cal) => (
@@ -197,7 +202,12 @@ export default function LandingPage() {
             {accessError && (
               <p className="text-sm text-red-600">{accessError}</p>
             )}
-            <Button type="submit" variant="secondary" className="w-full">
+            <Button
+              type="submit"
+              variant="secondary"
+              size="lg"
+              className="w-full min-h-[48px]"
+            >
               Accéder au calendrier
             </Button>
           </form>

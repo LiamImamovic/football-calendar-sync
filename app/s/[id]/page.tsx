@@ -190,7 +190,7 @@ export default function SubscribePage() {
   }
 
   return (
-    <main className="min-h-[100dvh] p-4 pb-8 max-w-lg mx-auto">
+    <main className="min-h-[100dvh] p-4 pb-8 max-w-lg mx-auto sm:p-6">
       <div className="flex flex-col items-center text-center mb-6">
         <div className="flex justify-center mb-3">
           <Image
@@ -310,9 +310,10 @@ export default function SubscribePage() {
             </div>
             <Button
               variant="secondary"
+              size="lg"
               onClick={handleDownloadPDF}
               disabled={pdfLoading}
-              className="w-full shrink-0"
+              className="w-full shrink-0 min-h-[48px]"
             >
               <FileDown className="h-5 w-5 mr-2 shrink-0" />
               {pdfLoading ? "Génération…" : "Télécharger le PDF"}
@@ -326,26 +327,31 @@ export default function SubscribePage() {
             </p>
           ) : (
             <>
-              <div className="flex items-center gap-2 mb-4">
-                <label
-                  htmlFor="event-filter"
-                  className="text-sm text-zinc-600 shrink-0"
-                >
-                  Afficher :
-                </label>
-                <select
-                  id="event-filter"
-                  value={eventFilter}
-                  onChange={(e) =>
-                    setEventFilter(e.target.value as EventFilter)
-                  }
-                  className="rounded-md border border-input bg-background px-3 py-2 text-sm w-full max-w-[180px]"
-                >
-                  <option value="upcoming">À venir</option>
-                  <option value="all">Tous les matchs</option>
-                  <option value="next5">5 prochains</option>
-                  <option value="thisMonth">Ce mois</option>
-                </select>
+              <div className="mb-4">
+                <p className="text-sm text-zinc-600 mb-2">Afficher :</p>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { value: "upcoming" as const, label: "À venir" },
+                      { value: "all" as const, label: "Tous" },
+                      { value: "next5" as const, label: "5 prochains" },
+                      { value: "thisMonth" as const, label: "Ce mois" },
+                    ] as const
+                  ).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setEventFilter(value)}
+                      className={`min-h-[44px] min-w-[44px] rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                        eventFilter === value
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
               {filteredEvents.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -358,10 +364,10 @@ export default function SubscribePage() {
                     return (
                       <li
                         key={ev.id}
-                        className={`flex flex-col gap-1 py-3 border-b border-zinc-100 last:border-0 ${
+                        className={`flex flex-col gap-1 py-4 border-b border-zinc-100 last:border-0 ${
                           isCancelled
-                            ? "opacity-60 bg-zinc-50/50 rounded-md px-2 -mx-2"
-                            : ""
+                            ? "opacity-60 bg-zinc-50/50 rounded-md px-3 -mx-3"
+                            : "px-1"
                         }`}
                       >
                         <span
@@ -417,7 +423,7 @@ export default function SubscribePage() {
                             href={getMapsUrl(ev.location)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline py-1.5"
+                            className="inline-flex items-center gap-1 text-primary hover:underline py-3 min-h-[44px] -my-1"
                           >
                             <MapPin className="h-4 w-4 shrink-0" />
                             Voir sur la carte

@@ -289,7 +289,7 @@ export default function AdminDashboardPage() {
     : null;
 
   return (
-    <main className="min-h-[100dvh] p-4 pb-8 max-w-4xl mx-auto">
+    <main className="min-h-[100dvh] p-4 pb-8 max-w-4xl mx-auto sm:p-6">
       <AlertDialog
         open={eventIdToCancel !== null}
         onOpenChange={(open) => !open && setEventIdToCancel(null)}
@@ -319,13 +319,13 @@ export default function AdminDashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <header className="flex flex-wrap items-center gap-3 mb-8">
+      <header className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8">
         <Image
           src={logo}
           alt="Logo club"
-          className="h-12 w-auto object-contain"
+          className="h-10 w-10 sm:h-12 sm:w-auto object-contain shrink-0"
         />
-        <h1 className="text-2xl font-bold text-foreground">
+        <h1 className="text-xl font-bold text-foreground leading-tight sm:text-2xl">
           {calendar.team_name}
         </h1>
         <span className="inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-2.5 py-0.5 text-xs font-medium">
@@ -333,11 +333,11 @@ export default function AdminDashboardPage() {
         </span>
       </header>
 
-      <section className="mb-8">
+      <section className="mb-6 sm:mb-8">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Plus className="h-5 w-5 shrink-0" />
               {editingEventId ? "Modifier le match" : "Ajouter un match"}
             </CardTitle>
             <CardDescription>
@@ -418,7 +418,7 @@ export default function AdminDashboardPage() {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-3 py-2">
+              <div className="flex items-center gap-3 py-3 min-h-[44px]">
                 <Switch
                   id="is_home"
                   checked={form.watch("is_home")}
@@ -427,7 +427,10 @@ export default function AdminDashboardPage() {
                     form.setValue("location", v ? DOMICILE_ADDRESS : "");
                   }}
                 />
-                <Label htmlFor="is_home">
+                <Label
+                  htmlFor="is_home"
+                  className="cursor-pointer touch-manipulation"
+                >
                   {form.watch("is_home") ? "Domicile" : "Extérieur"}
                 </Label>
               </div>
@@ -463,10 +466,10 @@ export default function AdminDashboardPage() {
         </Card>
       </section>
 
-      <section className="mb-8">
+      <section className="mb-6 sm:mb-8">
         <Card>
           <CardHeader>
-            <CardTitle>Matchs</CardTitle>
+            <CardTitle className="text-lg sm:text-base">Matchs</CardTitle>
             <CardDescription>
               {events.length === 0
                 ? "Liste des matchs à venir et passés."
@@ -481,147 +484,257 @@ export default function AdminDashboardPage() {
                 Aucun match pour l'instant. Ajoutez-en un ci-dessus.
               </p>
             ) : (
-              <div className="overflow-x-auto -mx-1">
-                <Table className="min-w-[320px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Match</TableHead>
-                      <TableHead>Lieu</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {events.map((ev) => {
-                      const isCancelled = ev.cancelled ?? false;
-                      return (
-                        <TableRow
-                          key={ev.id}
+              <>
+                {/* Liste en cartes sur mobile (meilleur touch) */}
+                <div className="space-y-3 md:hidden">
+                  {events.map((ev) => {
+                    const isCancelled = ev.cancelled ?? false;
+                    return (
+                      <div
+                        key={ev.id}
+                        className={`rounded-lg border p-4 ${
+                          isCancelled ? "opacity-60 bg-muted/30" : "bg-card"
+                        }`}
+                      >
+                        <p
                           className={
-                            isCancelled ? "opacity-60 bg-muted/30" : undefined
+                            isCancelled
+                              ? "text-muted-foreground text-sm line-through"
+                              : "text-sm font-medium text-foreground"
                           }
                         >
-                          <TableCell
-                            className={
+                          {format(new Date(ev.date), "dd MMM yyyy · HH:mm", {
+                            locale: fr,
+                          })}
+                        </p>
+                        <p
+                          className={`mt-1 inline-flex items-center gap-2 ${
+                            isCancelled
+                              ? "text-muted-foreground line-through"
+                              : ""
+                          }`}
+                        >
+                          <span
+                            className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{
+                              backgroundColor: ev.is_home
+                                ? "#1A4382"
+                                : "#d97706",
+                            }}
+                            aria-hidden
+                          />
+                          {ev.is_home ? (
+                            <>Nous vs {ev.opponent}</>
+                          ) : (
+                            <>{ev.opponent} vs Nous</>
+                          )}
+                          {isCancelled && (
+                            <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                              Annulé
+                            </span>
+                          )}
+                        </p>
+                        <div
+                          className={`mt-2 text-sm ${
+                            isCancelled
+                              ? "text-muted-foreground line-through"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {ev.location}
+                        </div>
+                        <a
+                          href={getMapsUrl(ev.location)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex min-h-[44px] min-w-[44px] items-center gap-1 text-primary hover:underline"
+                        >
+                          <MapPin className="h-4 w-4 shrink-0" />
+                          Voir sur la carte
+                        </a>
+                        <div className="mt-4 flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="default"
+                            className="flex-1 min-h-[44px]"
+                            onClick={() => startEditEvent(ev)}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Modifier
+                          </Button>
+                          <Button
+                            variant={isCancelled ? "default" : "destructive"}
+                            size="icon"
+                            className="shrink-0"
+                            onClick={() =>
                               isCancelled
-                                ? "line-through text-muted-foreground"
-                                : undefined
+                                ? onToggleCancelEvent(ev.id)
+                                : setEventIdToCancel(ev.id)
+                            }
+                            aria-label={
+                              isCancelled
+                                ? "Restaurer le match"
+                                : "Annuler le match"
                             }
                           >
-                            {format(new Date(ev.date), "dd MMM yyyy · HH:mm", {
-                              locale: fr,
-                            })}
-                          </TableCell>
-                          <TableCell
-                            className={
-                              isCancelled
-                                ? "line-through text-muted-foreground"
-                                : undefined
-                            }
-                          >
-                            <span
-                              className="inline-block w-2 h-2 rounded-full shrink-0 mr-2 align-middle"
-                              style={{
-                                backgroundColor: ev.is_home
-                                  ? "#1A4382"
-                                  : "#d97706",
-                              }}
-                              title={ev.is_home ? "Domicile" : "Extérieur"}
-                              aria-hidden
-                            />
-                            {ev.is_home ? (
-                              <>Nous vs {ev.opponent}</>
+                            {isCancelled ? (
+                              <RotateCcw className="h-5 w-5" />
                             ) : (
-                              <>{ev.opponent} vs Nous</>
+                              <Trash2 className="h-5 w-5" />
                             )}
-                            {isCancelled && (
-                              <span className="ml-2 text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded ">
-                                Annulé
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Tableau sur desktop */}
+                <div className="hidden overflow-x-auto -mx-1 md:block">
+                  <Table className="min-w-[320px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Match</TableHead>
+                        <TableHead>Lieu</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {events.map((ev) => {
+                        const isCancelled = ev.cancelled ?? false;
+                        return (
+                          <TableRow
+                            key={ev.id}
                             className={
-                              isCancelled
-                                ? "line-through text-muted-foreground"
-                                : undefined
+                              isCancelled ? "opacity-60 bg-muted/30" : undefined
                             }
                           >
-                            <div className="flex flex-col gap-0.5">
-                              <span>{ev.location}</span>
-                              <a
-                                href={getMapsUrl(ev.location)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline w-fit"
-                              >
-                                <MapPin className="h-3 w-3 shrink-0" />
-                                Voir sur la carte
-                              </a>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-10 shrink-0"
-                                onClick={() => startEditEvent(ev)}
-                                aria-label="Modifier le match"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={
-                                  isCancelled
-                                    ? "text-green-600 hover:text-green-700 hover:bg-green-50 size-10 shrink-0"
-                                    : "text-red-600 hover:text-red-700 hover:bg-red-50 size-10 shrink-0"
-                                }
-                                onClick={() =>
-                                  isCancelled
-                                    ? onToggleCancelEvent(ev.id)
-                                    : setEventIdToCancel(ev.id)
-                                }
-                                aria-label={
-                                  isCancelled
-                                    ? "Restaurer le match"
-                                    : "Annuler le match"
-                                }
-                              >
-                                {isCancelled ? (
-                                  <RotateCcw className="h-5 w-5" />
-                                ) : (
-                                  <Trash2 className="h-5 w-5" />
-                                )}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-            {events.length > 0 && (
-              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  <span
-                    className="inline-block w-2 h-2 rounded-full bg-[#1A4382]"
-                    aria-hidden
-                  />
-                  Domicile
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span
-                    className="inline-block w-2 h-2 rounded-full bg-[#d97706]"
-                    aria-hidden
-                  />
-                  Extérieur
-                </span>
-              </div>
+                            <TableCell
+                              className={
+                                isCancelled
+                                  ? "line-through text-muted-foreground"
+                                  : undefined
+                              }
+                            >
+                              {format(
+                                new Date(ev.date),
+                                "dd MMM yyyy · HH:mm",
+                                {
+                                  locale: fr,
+                                },
+                              )}
+                            </TableCell>
+                            <TableCell
+                              className={
+                                isCancelled
+                                  ? "line-through text-muted-foreground"
+                                  : undefined
+                              }
+                            >
+                              <span
+                                className="inline-block w-2 h-2 rounded-full shrink-0 mr-2 align-middle"
+                                style={{
+                                  backgroundColor: ev.is_home
+                                    ? "#1A4382"
+                                    : "#d97706",
+                                }}
+                                title={ev.is_home ? "Domicile" : "Extérieur"}
+                                aria-hidden
+                              />
+                              {ev.is_home ? (
+                                <>Nous vs {ev.opponent}</>
+                              ) : (
+                                <>{ev.opponent} vs Nous</>
+                              )}
+                              {isCancelled && (
+                                <span className="ml-2 text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded ">
+                                  Annulé
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell
+                              className={
+                                isCancelled
+                                  ? "line-through text-muted-foreground"
+                                  : undefined
+                              }
+                            >
+                              <div className="flex flex-col gap-0.5">
+                                <span>{ev.location}</span>
+                                <a
+                                  href={getMapsUrl(ev.location)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline w-fit"
+                                >
+                                  <MapPin className="h-3 w-3 shrink-0" />
+                                  Voir sur la carte
+                                </a>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="shrink-0"
+                                  onClick={() => startEditEvent(ev)}
+                                  aria-label="Modifier le match"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={
+                                    isCancelled
+                                      ? "text-green-600 hover:text-green-700 hover:bg-green-50 shrink-0"
+                                      : "text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                                  }
+                                  onClick={() =>
+                                    isCancelled
+                                      ? onToggleCancelEvent(ev.id)
+                                      : setEventIdToCancel(ev.id)
+                                  }
+                                  aria-label={
+                                    isCancelled
+                                      ? "Restaurer le match"
+                                      : "Annuler le match"
+                                  }
+                                >
+                                  {isCancelled ? (
+                                    <RotateCcw className="h-5 w-5" />
+                                  ) : (
+                                    <Trash2 className="h-5 w-5" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                {events.length > 0 && (
+                  <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full bg-[#1A4382]"
+                        aria-hidden
+                      />
+                      Domicile
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full bg-[#d97706]"
+                        aria-hidden
+                      />
+                      Extérieur
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -644,7 +757,7 @@ export default function AdminDashboardPage() {
               <p className="text-xs text-zinc-500 mb-2">
                 Gardez ce lien pour modifier le calendrier plus tard.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <Input
                   readOnly
                   value={
@@ -652,61 +765,63 @@ export default function AdminDashboardPage() {
                       ? `${window.location.origin}/${adminSlug}`
                       : `/${adminSlug}`
                   }
-                  className="bg-background font-mono text-sm"
+                  className="bg-background font-mono text-sm flex-1 min-w-0"
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0 size-10"
-                  onClick={async () => {
-                    const url =
-                      typeof window !== "undefined"
-                        ? `${window.location.origin}/${adminSlug}`
-                        : `/${adminSlug}`;
-                    const ok = await shareUrl(
-                      url,
-                      `Accès admin - ${calendar.team_name}`,
-                      `Lien pour gérer le calendrier : ${url}`,
-                    );
-                    if (!ok) {
-                      const copied = await copyToClipboard(url);
-                      if (copied) {
+                <div className="flex gap-2 sm:shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="flex-1 sm:flex-none shrink-0"
+                    onClick={async () => {
+                      const url =
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}/${adminSlug}`
+                          : `/${adminSlug}`;
+                      const ok = await shareUrl(
+                        url,
+                        `Accès admin - ${calendar.team_name}`,
+                        `Lien pour gérer le calendrier : ${url}`,
+                      );
+                      if (!ok) {
+                        const copied = await copyToClipboard(url);
+                        if (copied) {
+                          setCopiedAdmin(true);
+                          setTimeout(() => setCopiedAdmin(false), 2000);
+                        }
+                      }
+                    }}
+                    aria-label="Partager le lien admin"
+                  >
+                    {copiedAdmin ? (
+                      <Check className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Share2 className="h-5 w-5" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="flex-1 sm:flex-none shrink-0"
+                    onClick={async () => {
+                      const url =
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}/${adminSlug}`
+                          : `/${adminSlug}`;
+                      const ok = await copyToClipboard(url);
+                      if (ok) {
                         setCopiedAdmin(true);
                         setTimeout(() => setCopiedAdmin(false), 2000);
                       }
-                    }
-                  }}
-                  aria-label="Partager le lien admin"
-                >
-                  {copiedAdmin ? (
-                    <Check className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Share2 className="h-5 w-5" />
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0 size-10"
-                  onClick={async () => {
-                    const url =
-                      typeof window !== "undefined"
-                        ? `${window.location.origin}/${adminSlug}`
-                        : `/${adminSlug}`;
-                    const ok = await copyToClipboard(url);
-                    if (ok) {
-                      setCopiedAdmin(true);
-                      setTimeout(() => setCopiedAdmin(false), 2000);
-                    }
-                  }}
-                  aria-label="Copier le lien admin"
-                >
-                  {copiedAdmin ? (
-                    <Check className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Copy className="h-5 w-5" />
-                  )}
-                </Button>
+                    }}
+                    aria-label="Copier le lien admin"
+                  >
+                    {copiedAdmin ? (
+                      <Check className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Copy className="h-5 w-5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
             <div>
@@ -714,21 +829,21 @@ export default function AdminDashboardPage() {
                 Lien à donner aux parents
               </p>
               {parentsShareUrl && (
-                <div className="flex flex-col items-center gap-2 mb-4 p-3 rounded-lg bg-background/60">
+                <div className="flex flex-col items-center gap-2 mb-4 p-4 rounded-lg bg-background/60">
                   <QRCodeSVG
                     value={parentsShareUrl}
-                    size={160}
+                    size={200}
                     level="M"
                     includeMargin={false}
                     className="rounded"
                   />
-                  <p className="text-xs text-zinc-600 text-center">
+                  <p className="text-sm text-zinc-600 text-center">
                     Les parents flashent ce QR code pour s&apos;abonner au
                     calendrier
                   </p>
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <Input
                   readOnly
                   value={
@@ -736,45 +851,47 @@ export default function AdminDashboardPage() {
                       ? `${window.location.origin}/s/${calendar.id}`
                       : `/s/${calendar.id}`
                   }
-                  className="bg-background font-mono text-sm"
+                  className="bg-background font-mono text-sm flex-1 min-w-0"
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0 size-10"
-                  onClick={async () => {
-                    const url =
-                      typeof window !== "undefined"
-                        ? `${window.location.origin}/s/${calendar.id}`
-                        : `/s/${calendar.id}`;
-                    const ok = await shareUrl(
-                      url,
-                      `Calendrier des matchs - ${calendar.team_name}`,
-                      `Abonnez-vous au calendrier des matchs : ${url}`,
-                    );
-                    if (!ok) copyShareLink();
-                  }}
-                  aria-label="Partager le lien parents"
-                >
-                  {copiedParents ? (
-                    <Check className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Share2 className="h-5 w-5" />
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0 size-10"
-                  onClick={copyShareLink}
-                  aria-label="Copier le lien parents"
-                >
-                  {copiedParents ? (
-                    <Check className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Copy className="h-5 w-5" />
-                  )}
-                </Button>
+                <div className="flex gap-2 sm:shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="flex-1 sm:flex-none shrink-0"
+                    onClick={async () => {
+                      const url =
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}/s/${calendar.id}`
+                          : `/s/${calendar.id}`;
+                      const ok = await shareUrl(
+                        url,
+                        `Calendrier des matchs - ${calendar.team_name}`,
+                        `Abonnez-vous au calendrier des matchs : ${url}`,
+                      );
+                      if (!ok) copyShareLink();
+                    }}
+                    aria-label="Partager le lien parents"
+                  >
+                    {copiedParents ? (
+                      <Check className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Share2 className="h-5 w-5" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="flex-1 sm:flex-none shrink-0"
+                    onClick={copyShareLink}
+                    aria-label="Copier le lien parents"
+                  >
+                    {copiedParents ? (
+                      <Check className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Copy className="h-5 w-5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
