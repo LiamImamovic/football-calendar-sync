@@ -1,6 +1,16 @@
 "use client";
 
 import logo from "@/assets/images/logo-andernos-sport.avif";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -70,6 +80,7 @@ export default function AdminDashboardPage() {
   const [copiedAdmin, setCopiedAdmin] = useState(false);
   const [copiedParents, setCopiedParents] = useState(false);
   const [parentsShareUrl, setParentsShareUrl] = useState("");
+  const [eventIdToCancel, setEventIdToCancel] = useState<string | null>(null);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -279,6 +290,35 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="min-h-[100dvh] p-4 pb-8 max-w-4xl mx-auto">
+      <AlertDialog
+        open={eventIdToCancel !== null}
+        onOpenChange={(open) => !open && setEventIdToCancel(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annuler ce match ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Les parents le verront comme annulé dans leur calendrier. Vous
+              pourrez le restaurer à tout moment avec le bouton « Restaurer ».
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Ne pas annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={() => {
+                if (eventIdToCancel) {
+                  onToggleCancelEvent(eventIdToCancel);
+                  setEventIdToCancel(null);
+                }
+              }}
+            >
+              Oui, annuler le match
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <header className="flex flex-wrap items-center gap-3 mb-8">
         <Image
           src={logo}
@@ -495,7 +535,7 @@ export default function AdminDashboardPage() {
                               <>{ev.opponent} vs Nous</>
                             )}
                             {isCancelled && (
-                              <span className="ml-2 text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                              <span className="ml-2 text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded ">
                                 Annulé
                               </span>
                             )}
@@ -539,7 +579,11 @@ export default function AdminDashboardPage() {
                                     ? "text-green-600 hover:text-green-700 hover:bg-green-50 size-10 shrink-0"
                                     : "text-red-600 hover:text-red-700 hover:bg-red-50 size-10 shrink-0"
                                 }
-                                onClick={() => onToggleCancelEvent(ev.id)}
+                                onClick={() =>
+                                  isCancelled
+                                    ? onToggleCancelEvent(ev.id)
+                                    : setEventIdToCancel(ev.id)
+                                }
                                 aria-label={
                                   isCancelled
                                     ? "Restaurer le match"
