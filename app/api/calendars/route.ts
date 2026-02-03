@@ -19,6 +19,11 @@ export async function GET() {
     (data ?? []).map((row) => ({
       team_name: (row as { team_name: string }).team_name,
       admin_slug: (row as { admin_slug: string }).admin_slug,
-    }))
+    })),
+    {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
+    }
   );
 }

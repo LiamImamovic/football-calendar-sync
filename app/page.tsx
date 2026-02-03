@@ -45,21 +45,38 @@ export default function LandingPage() {
   const [error, setError] = useState("");
   const [accessError, setAccessError] = useState("");
 
+  async function loadCalendars() {
+    try {
+      const res = await fetch("/api/calendars", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCalendars(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setCalendarsLoading(false);
+    }
+  }
+
   useEffect(() => {
-    async function loadCalendars() {
-      try {
-        const res = await fetch("/api/calendars");
-        if (res.ok) {
-          const data = await res.json();
-          setCalendars(data);
-        }
-      } catch {
-        // ignore
-      } finally {
-        setCalendarsLoading(false);
+    setCalendarsLoading(true);
+    loadCalendars();
+  }, []);
+
+  // Recharger la liste quand on revient sur l’onglet (ex. après création/suppression ailleurs)
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        loadCalendars();
       }
     }
-    loadCalendars();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
