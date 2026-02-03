@@ -81,6 +81,8 @@ export default function AdminDashboardPage() {
   const [copiedParents, setCopiedParents] = useState(false);
   const [parentsShareUrl, setParentsShareUrl] = useState("");
   const [eventIdToCancel, setEventIdToCancel] = useState<string | null>(null);
+  type HomeAwayFilter = "all" | "home" | "away";
+  const [homeAwayFilter, setHomeAwayFilter] = useState<HomeAwayFilter>("all");
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -266,6 +268,12 @@ export default function AdminDashboardPage() {
   const events = (calendar.events || []).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
+  const filteredEvents =
+    homeAwayFilter === "all"
+      ? events
+      : events.filter((e) =>
+          homeAwayFilter === "home" ? e.is_home : !e.is_home,
+        );
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const notCancelled = (e: CalendarEvent) => !(e.cancelled ?? false);
@@ -469,25 +477,76 @@ export default function AdminDashboardPage() {
       <section className="mb-6 sm:mb-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg sm:text-base">Matchs</CardTitle>
-            <CardDescription>
-              {events.length === 0
-                ? "Liste des matchs à venir et passés."
-                : nextMatchLabel
-                ? `Prochain match : ${nextMatchLabel}.`
-                : ""}
-            </CardDescription>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg sm:text-base">Matchs</CardTitle>
+                <CardDescription>
+                  {events.length === 0
+                    ? "Liste des matchs à venir et passés."
+                    : nextMatchLabel
+                    ? `Prochain match : ${nextMatchLabel}.`
+                    : ""}
+                </CardDescription>
+              </div>
+              {events.length > 0 && (
+                <div className="flex rounded-lg border bg-muted/30 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setHomeAwayFilter("all")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                      homeAwayFilter === "all"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Tous ({events.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHomeAwayFilter("home")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                      homeAwayFilter === "home"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Domicile ({events.filter((e) => e.is_home).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHomeAwayFilter("away")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                      homeAwayFilter === "away"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Extérieur ({events.filter((e) => !e.is_home).length})
+                  </button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {events.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 Aucun match pour l'instant. Ajoutez-en un ci-dessus.
               </p>
+            ) : filteredEvents.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Aucun match{" "}
+                {homeAwayFilter === "home"
+                  ? "à domicile"
+                  : homeAwayFilter === "away"
+                  ? "à l'extérieur"
+                  : ""}
+                .
+              </p>
             ) : (
               <>
                 {/* Liste en cartes sur mobile (meilleur touch) */}
                 <div className="space-y-3 md:hidden">
-                  {events.map((ev) => {
+                  {filteredEvents.map((ev) => {
                     const isCancelled = ev.cancelled ?? false;
                     return (
                       <div
@@ -600,7 +659,7 @@ export default function AdminDashboardPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {events.map((ev) => {
+                      {filteredEvents.map((ev) => {
                         const isCancelled = ev.cancelled ?? false;
                         return (
                           <TableRow
