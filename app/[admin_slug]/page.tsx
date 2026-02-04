@@ -30,9 +30,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCalendar } from "@/hooks/use-calendar";
 import { supabase } from "@/lib/supabase";
 import { copyToClipboard, getMapsUrl, randomUUID, shareUrl } from "@/lib/utils";
-import type { CalendarEvent, Calendar as CalendarType } from "@/types/database";
+import type { CalendarEvent } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { differenceInDays, format, isToday, isTomorrow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -68,21 +69,25 @@ type EventFormValues = z.infer<typeof eventSchema>;
 const DOMICILE_ADDRESS =
   "STADE JACQUES ROSAZZA 3 AV PIERRE DE COURBERTIN 33510 - ANDERNOS LES BAINS";
 
+type HomeAwayFilter = "all" | "home" | "away";
+
 export default function AdminDashboardPage() {
   const params = useParams();
   const router = useRouter();
   const adminSlug = params.admin_slug as string;
-  const [calendar, setCalendar] = useState<CalendarType | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { calendar, loading, setCalendar } = useCalendar(adminSlug);
   const [addEventLoading, setAddEventLoading] = useState(false);
   const [addEventError, setAddEventError] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [copiedAdmin, setCopiedAdmin] = useState(false);
   const [copiedParents, setCopiedParents] = useState(false);
-  const [parentsShareUrl, setParentsShareUrl] = useState("");
   const [eventIdToCancel, setEventIdToCancel] = useState<string | null>(null);
-  type HomeAwayFilter = "all" | "home" | "away";
   const [homeAwayFilter, setHomeAwayFilter] = useState<HomeAwayFilter>("all");
+
+  const parentsShareUrl =
+    typeof window !== "undefined" && calendar?.id
+      ? `${window.location.origin}/s/${calendar.id}`
+      : "";
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -96,27 +101,8 @@ export default function AdminDashboardPage() {
   });
 
   useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase
-        .from("calendars")
-        .select("*")
-        .eq("admin_slug", adminSlug)
-        .single();
-      if (error || !data) {
-        router.push("/");
-        return;
-      }
-      setCalendar(data as unknown as CalendarType);
-      setLoading(false);
-    }
-    load();
-  }, [adminSlug, router]);
-
-  useEffect(() => {
-    if (calendar?.id && typeof window !== "undefined") {
-      setParentsShareUrl(`${window.location.origin}/s/${calendar.id}`);
-    }
-  }, [calendar?.id]);
+    if (!loading && !calendar) router.push("/");
+  }, [loading, calendar, router]);
 
   async function onAddEvent(values: EventFormValues) {
     if (!calendar) return;

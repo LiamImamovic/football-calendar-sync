@@ -3,14 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCalendarsList } from "@/hooks/use-calendars-list";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import logo from "@/assets/images/logo-andernos-sport.avif";
-
-type CalendarOption = { team_name: string; admin_slug: string };
 
 function generateSlug(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -36,48 +35,13 @@ function extractSlugFromInput(value: string): string | null {
 
 export default function LandingPage() {
   const router = useRouter();
+  const { calendars, loading: calendarsLoading } = useCalendarsList();
   const [teamName, setTeamName] = useState("");
   const [accessInput, setAccessInput] = useState("");
   const [selectedSlug, setSelectedSlug] = useState("");
-  const [calendars, setCalendars] = useState<CalendarOption[]>([]);
-  const [calendarsLoading, setCalendarsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accessError, setAccessError] = useState("");
-
-  async function loadCalendars() {
-    try {
-      const res = await fetch("/api/calendars", {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCalendars(data);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setCalendarsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    setCalendarsLoading(true);
-    loadCalendars();
-  }, []);
-
-  // Recharger la liste quand on revient sur l’onglet (ex. après création/suppression ailleurs)
-  useEffect(() => {
-    function onVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        loadCalendars();
-      }
-    }
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
