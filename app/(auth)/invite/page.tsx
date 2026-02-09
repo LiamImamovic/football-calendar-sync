@@ -10,7 +10,7 @@ function InviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const [status, setStatus] = useState<"loading" | "success" | "error" | "signup">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "error" | "signup" | "email_mismatch">("loading");
   const [clubName, setClubName] = useState("");
 
   useEffect(() => {
@@ -34,7 +34,7 @@ function InviteContent() {
 
       const { data: invite, error: inviteError } = await supabase
         .from("club_invites")
-        .select("club_id")
+        .select("club_id, email")
         .eq("token", token)
         .gt("expires_at", new Date().toISOString())
         .single();
@@ -45,7 +45,13 @@ function InviteContent() {
         return;
       }
 
-      const cid = (invite as { club_id: string }).club_id;
+      const inviteRow = invite as { club_id: string; email: string };
+      if (inviteRow.email.toLowerCase() !== (user.email ?? "").toLowerCase()) {
+        setStatus("email_mismatch");
+        return;
+      }
+
+      const cid = inviteRow.club_id;
 
       const { error: insertError } = await supabase.from("club_members").insert({
         club_id: cid,
@@ -98,20 +104,42 @@ function InviteContent() {
   }
 
   if (status === "signup") {
+    const loginUrl = `/login?redirect=${encodeURIComponent(`/invite?token=${token}`)}`;
     return (
       <>
         <h1 className="text-2xl font-bold text-center mb-2">
           Invitation à rejoindre un club
         </h1>
         <p className="text-muted-foreground text-center text-sm mb-6">
-          Créez un compte pour accepter cette invitation.
+          Créez un compte ou connectez-vous pour accepter cette invitation.
         </p>
         <div className="flex flex-col gap-3">
           <Button asChild size="lg" className="w-full">
             <Link href={`/signup?invite_token=${token}`}>Créer un compte</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="w-full">
-            <Link href="/login">J&apos;ai déjà un compte</Link>
+            <Link href={loginUrl}>J&apos;ai déjà un compte</Link>
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  if (status === "email_mismatch") {
+    return (
+      <>
+        <h1 className="text-2xl font-bold text-center mb-2">
+          Mauvais compte
+        </h1>
+        <p className="text-muted-foreground text-center text-sm mb-6">
+          Cette invitation a été envoyée à une autre adresse email. Déconnectez-vous et connectez-vous avec le compte invité.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Button asChild variant="outline" size="lg" className="w-full">
+            <Link href="/login">Se connecter avec un autre compte</Link>
+          </Button>
+          <Button asChild size="lg" className="w-full">
+            <Link href="/dashboard">Aller au tableau de bord</Link>
           </Button>
         </div>
       </>

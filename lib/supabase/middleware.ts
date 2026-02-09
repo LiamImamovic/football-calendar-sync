@@ -46,6 +46,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isAuthPage && user && !pathname.startsWith("/invite")) {
+    const redirectTo = request.nextUrl.searchParams.get("redirect");
+    if (redirectTo && redirectTo.startsWith("/invite")) {
+      return NextResponse.redirect(new URL(redirectTo, request.url));
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

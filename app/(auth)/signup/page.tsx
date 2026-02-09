@@ -36,21 +36,28 @@ function SignupForm() {
     }
     setSuccess(true);
     router.refresh();
+    // Si pas de confirmation email, l'utilisateur est déjà connecté → aller accepter l'invite
     if (inviteToken) {
-      router.push(`/invite?token=${inviteToken}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push(`/invite?token=${inviteToken}`);
+      }
     }
   }
 
   if (success) {
+    const loginRedirect = inviteToken
+      ? `/login?redirect=${encodeURIComponent(`/invite?token=${inviteToken}`)}`
+      : "/login";
     return (
       <>
         <h1 className="text-2xl font-bold text-center mb-2">Vérifiez votre email</h1>
         <p className="text-muted-foreground text-center text-sm mb-6">
           Un lien de confirmation a été envoyé à <strong>{email}</strong>.
-          Cliquez dessus pour activer votre compte, puis connectez-vous.
+          Cliquez dessus pour activer votre compte, puis connectez-vous pour rejoindre le club.
         </p>
         <Button asChild className="w-full" size="lg">
-          <Link href="/login">Aller à la connexion</Link>
+          <Link href={loginRedirect}>Aller à la connexion</Link>
         </Button>
       </>
     );
@@ -60,7 +67,9 @@ function SignupForm() {
     <>
       <h1 className="text-2xl font-bold text-center mb-2">Créer un compte</h1>
       <p className="text-muted-foreground text-center text-sm mb-6">
-        Créez votre club et partagez vos calendriers.
+        {inviteToken
+          ? "Créez un compte pour rejoindre le club qui vous a invité."
+          : "Créez votre club et partagez vos calendriers."}
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
