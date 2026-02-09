@@ -22,11 +22,6 @@ const config: Config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        club: {
-          primary: "#1A4382",
-          gold: "#E8C061",
-          white: "#FFFFFF",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",

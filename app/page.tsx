@@ -1,235 +1,161 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabase";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-import logo from "@/assets/images/logo-andernos-sport.avif";
-
-type CalendarOption = { team_name: string; admin_slug: string };
-
-function generateSlug(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let slug = "";
-  for (let i = 0; i < 12; i++) {
-    slug += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return slug;
-}
-
-function extractSlugFromInput(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  try {
-    const url = new URL(trimmed);
-    const path = url.pathname.replace(/^\/|\/$/g, "");
-    const slug = path.split("/")[0];
-    return slug || null;
-  } catch {
-    return trimmed;
-  }
-}
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Calendar, FileDown, Link2, Smartphone, Users } from "lucide-react";
+import Link from "next/link";
 
 export default function LandingPage() {
-  const router = useRouter();
-  const [teamName, setTeamName] = useState("");
-  const [accessInput, setAccessInput] = useState("");
-  const [selectedSlug, setSelectedSlug] = useState("");
-  const [calendars, setCalendars] = useState<CalendarOption[]>([]);
-  const [calendarsLoading, setCalendarsLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [accessError, setAccessError] = useState("");
-
-  async function loadCalendars() {
-    try {
-      const res = await fetch("/api/calendars", {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCalendars(data);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setCalendarsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    setCalendarsLoading(true);
-    loadCalendars();
-  }, []);
-
-  // Recharger la liste quand on revient sur l’onglet (ex. après création/suppression ailleurs)
-  useEffect(() => {
-    function onVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        loadCalendars();
-      }
-    }
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    const name = teamName.trim();
-    if (!name) {
-      setError("Entrez le nom de votre équipe.");
-      return;
-    }
-    setLoading(true);
-    const adminSlug = generateSlug();
-    const { data, error: insertError } = await supabase
-      .from("calendars")
-      .insert({
-        team_name: name,
-        admin_slug: adminSlug,
-        events: [],
-      })
-      .select("admin_slug")
-      .single();
-
-    setLoading(false);
-    if (insertError) {
-      setError("Erreur lors de la création. Réessayez.");
-      return;
-    }
-    router.push(`/${data?.admin_slug ?? adminSlug}`);
-  }
-
-  function handleAccess(e: React.FormEvent) {
-    e.preventDefault();
-    setAccessError("");
-    const slug = selectedSlug || extractSlugFromInput(accessInput);
-    if (!slug) {
-      setAccessError(
-        "Choisissez un calendrier dans la liste ou collez le lien / code.",
-      );
-      return;
-    }
-    router.push(`/${slug}`);
-  }
-
-  if (calendarsLoading) {
-    return (
-      <main className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-6">
-        <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent"
-          aria-hidden
-        />
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-6">
-      <div className="w-full max-w-md space-y-8 text-center">
-        <div className="space-y-3">
-          <div className="flex justify-center">
-            <Image
-              src={logo}
-              alt="Andernos Sport"
-              className="h-24 sm:h-28 w-auto object-contain"
-              priority
-            />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
-            Ne ratez plus jamais un match
-          </h1>
-          <p className="text-base text-muted-foreground">
-            Créez un calendrier pour votre équipe et partagez-le aux parents.
-          </p>
+    <main className="min-h-[100dvh] flex flex-col">
+      <header className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-border">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-foreground hidden sm:inline">
+            Football Calendar Sync
+          </span>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4 text-left">
-          <div className="space-y-2">
-            <Label htmlFor="team" className="text-base">
-              Nom de votre équipe
-            </Label>
-            <Input
-              id="team"
-              placeholder="ex: U13 Équipe A"
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              disabled={loading}
-              className="bg-club-white border-border"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button
-            type="submit"
-            className="w-full min-h-[48px]"
-            size="lg"
-            disabled={loading}
-          >
-            {loading ? "Création…" : "Créer mon calendrier"}
+        <nav className="flex items-center gap-2">
+          <Button variant="ghost" asChild size="sm">
+            <Link href="/login">Se connecter</Link>
           </Button>
-        </form>
+          <Button asChild size="sm">
+            <Link href="/signup">Commencer gratuitement</Link>
+          </Button>
+        </nav>
+      </header>
 
-        <div className="border-t border-border pt-6">
-          <p className="text-sm text-muted-foreground mb-2">
-            Déjà un calendrier ?
-          </p>
-          <form onSubmit={handleAccess} className="space-y-3">
-            {!calendarsLoading && calendars.length > 0 && (
-              <div className="space-y-2">
-                <select
-                  id="calendar-select"
-                  value={selectedSlug}
-                  onChange={(e) => {
-                    setSelectedSlug(e.target.value);
-                    if (e.target.value) setAccessInput("");
-                  }}
-                  className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
-                >
-                  <option value="">— Choisir dans la liste —</option>
-                  {calendars.map((cal) => (
-                    <option key={cal.admin_slug} value={cal.admin_slug}>
-                      {cal.team_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="access-input" className="text-sm">
-                Ou coller le lien / code
-              </Label>
-              <Input
-                id="access-input"
-                placeholder="Collez votre lien d'accès ou le code"
-                value={accessInput}
-                onChange={(e) => {
-                  setAccessInput(e.target.value);
-                  if (e.target.value.trim()) setSelectedSlug("");
-                }}
-                className="bg-background"
-              />
-            </div>
-            {accessError && (
-              <p className="text-sm text-red-600">{accessError}</p>
-            )}
-            <Button
-              type="submit"
-              variant="secondary"
-              size="lg"
-              className="w-full min-h-[48px]"
-            >
-              Accéder au calendrier
-            </Button>
-          </form>
+      <section className="flex-1 flex flex-col items-center justify-center px-4 py-12 sm:py-16 text-center">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground leading-tight max-w-2xl">
+          Ne ratez plus jamais un match
+        </h1>
+        <p className="mt-4 text-lg text-muted-foreground max-w-xl">
+          Créez un calendrier pour votre équipe, partagez-le aux parents.
+          Abonnement .ics et PDF en un clic.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-4 justify-center">
+          <Button asChild size="lg" className="min-h-[48px]">
+            <Link href="/signup">Commencer gratuitement</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg" className="min-h-[48px]">
+            <Link href="/login">J&apos;ai déjà un compte</Link>
+          </Button>
         </div>
-      </div>
+      </section>
+
+      <section className="px-4 py-12 sm:py-16 border-t border-border">
+        <h2 className="text-2xl font-bold text-center mb-8">
+          Pour les clubs et les coachs
+        </h2>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-4xl mx-auto">
+          <Card>
+            <CardHeader>
+              <Calendar className="h-10 w-10 text-primary mb-2" />
+              <CardTitle className="text-base">Calendrier partagé</CardTitle>
+              <CardDescription>
+                Ajoutez les matchs, les parents voient tout à jour.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Link2 className="h-10 w-10 text-primary mb-2" />
+              <CardTitle className="text-base">Lien .ics</CardTitle>
+              <CardDescription>
+                Un lien à envoyer : abonnement direct sur iPhone et Android.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <FileDown className="h-10 w-10 text-primary mb-2" />
+              <CardTitle className="text-base">PDF à télécharger</CardTitle>
+              <CardDescription>
+                Les parents peuvent télécharger le calendrier en PDF.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Users className="h-10 w-10 text-primary mb-2" />
+              <CardTitle className="text-base">Plusieurs équipes</CardTitle>
+              <CardDescription>
+                Un club, plusieurs coachs et équipes, tout centralisé.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </section>
+
+      <section className="px-4 py-12 sm:py-16 bg-muted/30">
+        <h2 className="text-2xl font-bold text-center mb-8">Tarifs</h2>
+        <div className="grid gap-6 sm:grid-cols-3 max-w-3xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gratuit</CardTitle>
+              <CardDescription>Pour démarrer</CardDescription>
+              <p className="text-2xl font-bold mt-2">0 €</p>
+              <p className="text-sm text-muted-foreground">/ an</p>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>3 coachs max</p>
+              <p>5 calendriers (équipes)</p>
+              <p>Toutes les fonctionnalités de base</p>
+            </CardContent>
+          </Card>
+          <Card className="border-primary shadow-md">
+            <CardHeader>
+              <CardTitle>Pro</CardTitle>
+              <CardDescription>Clubs actifs</CardDescription>
+              <p className="text-2xl font-bold mt-2">15 €</p>
+              <p className="text-sm text-muted-foreground">/ an</p>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>5 coachs max</p>
+              <p>10 calendriers</p>
+              <p>Idéal pour plusieurs équipes</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Club</CardTitle>
+              <CardDescription>Gros clubs</CardDescription>
+              <p className="text-2xl font-bold mt-2">49 €</p>
+              <p className="text-sm text-muted-foreground">/ an</p>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>10 coachs max</p>
+              <p>25 calendriers</p>
+              <p>Pour les structures importantes</p>
+            </CardContent>
+          </Card>
+        </div>
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Géré par l&apos;owner du club. Les parents ne paient rien.
+        </p>
+      </section>
+
+      <section className="px-4 py-12 sm:py-16 flex flex-col items-center text-center">
+        <Smartphone className="h-12 w-12 text-primary mb-4" />
+        <h2 className="text-xl font-bold">
+          Les parents s&apos;abonnent en un clic
+        </h2>
+        <p className="mt-2 text-muted-foreground max-w-md">
+          Le coach envoie le lien du calendrier. Les parents ouvrent le lien,
+          cliquent « S&apos;abonner au calendrier » : les matchs apparaissent
+          sur leur téléphone. Pas de compte requis.
+        </p>
+        <Button asChild size="lg" className="mt-6">
+          <Link href="/signup">Créer un compte et essayer</Link>
+        </Button>
+      </section>
+
+      <footer className="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground">
+        <p>Football Calendar Sync — Calendriers partagés pour les équipes.</p>
+      </footer>
     </main>
   );
 }
