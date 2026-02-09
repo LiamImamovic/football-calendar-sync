@@ -1,6 +1,5 @@
 "use client";
 
-import logo from "@/assets/images/logo-andernos-sport.avif";
 import {
   Accordion,
   AccordionContent,
@@ -15,13 +14,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ClubThemeProvider } from "@/components/ClubThemeProvider";
 import { supabase } from "@/lib/supabase";
 import { copyToClipboard, getMapsUrl, shareUrl } from "@/lib/utils";
 import type { CalendarEvent, Calendar as CalendarType } from "@/types/database";
 import { differenceInDays, format, isToday, isTomorrow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { FileDown, MapPin, Share2, Smartphone } from "lucide-react";
-import Image from "next/image";
+import { FileDown, ImageIcon, MapPin, Share2, Smartphone } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -35,12 +34,13 @@ export default function SubscribePage() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [eventFilter, setEventFilter] = useState<EventFilter>("upcoming");
   const [shareFeedback, setShareFeedback] = useState(false);
+  const [logoLoadError, setLogoLoadError] = useState(false);
 
   useEffect(() => {
     async function load() {
       const { data, error } = await supabase
         .from("calendars")
-        .select("*")
+        .select("*, clubs(logo_url, primary_color, secondary_color)")
         .eq("id", id)
         .single();
       if (error || !data) {
@@ -49,6 +49,7 @@ export default function SubscribePage() {
         return;
       }
       setCalendar(data as unknown as CalendarType);
+      setLogoLoadError(false);
       setLoading(false);
     }
     load();
@@ -95,37 +96,56 @@ export default function SubscribePage() {
           (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
         )
       : eventFilter === "all"
-      ? allEvents
-      : eventFilter === "next5"
-      ? allEvents
-          .filter((e) => notCancelled(e) && new Date(e.date) >= now)
-          .slice(0, 5)
-      : allEvents.filter((e) => {
-          const d = new Date(e.date);
-          return (
-            d.getMonth() === now.getMonth() &&
-            d.getFullYear() === now.getFullYear()
-          );
-        });
+        ? allEvents
+        : eventFilter === "next5"
+          ? allEvents
+              .filter((e) => notCancelled(e) && new Date(e.date) >= now)
+              .slice(0, 5)
+          : allEvents.filter((e) => {
+              const d = new Date(e.date);
+              return (
+                d.getMonth() === now.getMonth() &&
+                d.getFullYear() === now.getFullYear()
+              );
+            });
 
   const upcomingCount = allEvents.filter(
     (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
   ).length;
   const nextMatch =
     upcomingCount > 0
-      ? allEvents.find(
+      ? (allEvents.find(
           (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
-        ) ?? null
+        ) ?? null)
       : null;
   const nextMatchLabel = nextMatch
     ? isToday(new Date(nextMatch.date))
       ? "aujourd'hui"
       : isTomorrow(new Date(nextMatch.date))
-      ? "demain"
-      : differenceInDays(new Date(nextMatch.date), now) <= 7
-      ? `dans ${differenceInDays(new Date(nextMatch.date), now)} jours`
-      : format(new Date(nextMatch.date), "d MMM", { locale: fr })
+        ? "demain"
+        : differenceInDays(new Date(nextMatch.date), now) <= 7
+          ? `dans ${differenceInDays(new Date(nextMatch.date), now)} jours`
+          : format(new Date(nextMatch.date), "d MMM", { locale: fr })
     : null;
+
+  type ClubData = {
+    logo_url: string | null;
+    primary_color: string | null;
+    secondary_color: string | null;
+  };
+  const calendarWithClub = calendar as unknown as {
+    clubs?: ClubData | ClubData[] | null;
+    club?: ClubData | null;
+  };
+  const clubsData = calendarWithClub?.clubs ?? calendarWithClub?.club ?? null;
+  const clubObj: ClubData | null = clubsData
+    ? Array.isArray(clubsData)
+      ? (clubsData[0] ?? null)
+      : clubsData
+    : null;
+  const clubLogoUrl = clubObj?.logo_url ?? null;
+  const clubPrimaryColor = clubObj?.primary_color ?? null;
+  const clubSecondaryColor = clubObj?.secondary_color ?? null;
 
   async function getLogoDataUrl(): Promise<string | null> {
     return new Promise((resolve) => {
@@ -134,6 +154,7 @@ export default function SubscribePage() {
         return;
       }
       const img = new window.Image();
+      img.crossOrigin = "anonymous";
       img.onload = () => {
         try {
           const canvas = document.createElement("canvas");
@@ -151,7 +172,12 @@ export default function SubscribePage() {
         }
       };
       img.onerror = () => resolve(null);
-      img.src = `${window.location.origin}${logo.src}`;
+      img.src = clubLogoUrl ?? "";
+      if (clubLogoUrl) {
+        img.src = clubLogoUrl;
+      } else {
+        resolve(null);
+      }
     });
   }
 
@@ -174,6 +200,8 @@ export default function SubscribePage() {
           teamName={calendar.team_name}
           events={eventsForPdf}
           logoDataUrl={logoDataUrl}
+          primaryColor={clubPrimaryColor}
+          secondaryColor={clubSecondaryColor}
         />,
       ).toBlob();
       const url = URL.createObjectURL(blob);
@@ -190,14 +218,24 @@ export default function SubscribePage() {
   }
 
   return (
+    <ClubThemeProvider primaryColor={clubPrimaryColor} secondaryColor={clubSecondaryColor}>
     <main className="min-h-[100dvh] p-4 pb-8 max-w-lg mx-auto sm:p-6">
       <div className="flex flex-col items-center text-center mb-6">
-        <div className="flex justify-center mb-3">
-          <Image
-            src={logo}
-            alt="Andernos Sport"
-            className="h-14 w-auto object-contain"
-          />
+        <div className="flex justify-center mb-3 min-h-[3.5rem] items-center">
+          {clubLogoUrl && !logoLoadError ? (
+            <img
+              src={clubLogoUrl}
+              alt="Logo club"
+              className="h-14 w-auto max-w-[120px] object-contain"
+              width={120}
+              height={56}
+              onError={() => setLogoLoadError(true)}
+            />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+              <ImageIcon className="h-8 w-8 text-muted-foreground" />
+            </div>
+          )}
         </div>
         <h1 className="text-xl font-bold text-foreground leading-tight">
           Calendrier de {calendar.team_name}
@@ -304,8 +342,8 @@ export default function SubscribePage() {
                 {allEvents.length === 0
                   ? "Liste des matchs du calendrier (lecture seule)."
                   : nextMatchLabel
-                  ? `Prochain match : ${nextMatchLabel}.`
-                  : ""}
+                    ? `Prochain match : ${nextMatchLabel}.`
+                    : ""}
               </CardDescription>
             </div>
             <Button
@@ -381,7 +419,7 @@ export default function SubscribePage() {
                             className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                             style={{
                               backgroundColor: ev.is_home
-                                ? "#1A4382"
+                                ? "hsl(var(--primary))"
                                 : "#d97706",
                             }}
                             title={ev.is_home ? "Domicile" : "Extérieur"}
@@ -438,7 +476,7 @@ export default function SubscribePage() {
                 <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100 text-xs text-zinc-500">
                   <span className="inline-flex items-center gap-1.5">
                     <span
-                      className="inline-block w-2 h-2 rounded-full bg-[#1A4382]"
+                      className="inline-block w-2 h-2 rounded-full bg-primary"
                       aria-hidden
                     />
                     Domicile
@@ -457,5 +495,6 @@ export default function SubscribePage() {
         </CardContent>
       </Card>
     </main>
+    </ClubThemeProvider>
   );
 }

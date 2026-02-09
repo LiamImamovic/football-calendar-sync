@@ -1,75 +1,76 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { supabase } from "@/lib/supabase";
-import type { Calendar } from "@/types/database";
+import type { Club } from "@/types/database";
 import { useEffect, useState } from "react";
 
-export function useCalendar(adminSlug: string | undefined) {
-  const [calendar, setCalendar] = useState<Calendar | null>(null);
+export function useClub(slug: string | undefined) {
+  const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
   useEffect(() => {
-    if (!adminSlug) {
+    if (!slug) {
       setLoading(false);
       return;
     }
     let cancelled = false;
     async function load() {
       const { data, error } = await supabase
-        .from("calendars")
+        .from("clubs")
         .select("*")
-        .eq("admin_slug", adminSlug)
+        .eq("slug", slug)
         .single();
       if (cancelled) return;
       setLoading(false);
       if (error || !data) {
-        setCalendar(null);
+        setClub(null);
         return;
       }
-      setCalendar(data as unknown as Calendar);
+      setClub(data as unknown as Club);
     }
     setLoading(true);
     load();
     return () => {
       cancelled = true;
     };
-  }, [adminSlug]);
+  }, [slug]);
 
-  return { calendar, loading, setCalendar };
+  return { club, loading };
 }
 
-export function useCalendarById(calendarId: string | undefined) {
-  const [calendar, setCalendar] = useState<Calendar | null>(null);
+export function useClubById(clubId: string | undefined) {
+  const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabaseClient = createClient();
+  const supabase = createClient();
 
   useEffect(() => {
-    if (!calendarId) {
+    if (!clubId) {
       setLoading(false);
+      setClub(null);
       return;
     }
     let cancelled = false;
     async function load() {
-      const { data, error } = await supabaseClient
-        .from("calendars")
+      const { data, error } = await supabase
+        .from("clubs")
         .select("*")
-        .eq("id", calendarId)
+        .eq("id", clubId)
         .single();
       if (cancelled) return;
       setLoading(false);
       if (error || !data) {
-        setCalendar(null);
+        setClub(null);
         return;
       }
-      setCalendar(data as unknown as Calendar);
+      setClub(data as unknown as Club);
     }
     setLoading(true);
     load();
     return () => {
       cancelled = true;
     };
-  }, [calendarId]);
+  }, [clubId]);
 
-  return { calendar, loading, setCalendar, supabase: supabaseClient };
+  return { club, loading };
 }

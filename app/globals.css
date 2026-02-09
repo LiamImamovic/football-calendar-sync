@@ -4,30 +4,29 @@
 
 @layer base {
   :root {
-    /* Couleurs club Andernos Sport: #1A4382 (bleu), #E8C061 (or), #FFFFFF */
-    --club-primary: 214 67% 31%;
-    --club-gold: 41 78% 65%;
-    --club-white: 0 0% 100%;
+    /* Couleurs SaaS — identité plateforme (indigo + slate neutre) */
     --background: 0 0% 100%;
-    --foreground: 214 67% 31%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 214 67% 31%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 214 67% 31%;
-    --primary: 214 67% 31%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 239 84% 67%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 41 78% 92%;
-    --secondary-foreground: 214 67% 31%;
-    --muted: 214 30% 96%;
-    --muted-foreground: 214 40% 40%;
-    --accent: 41 78% 65%;
-    --accent-foreground: 214 67% 31%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214 30% 88%;
-    --input: 214 30% 88%;
-    --ring: 214 67% 31%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 239 84% 67%;
     --radius: 0.5rem;
+    /* Couleur particules (overridable par thème club) */
+    --particles-color: #6366f1;
   }
   .dark {
     --background: 240 10% 3.9%;
