@@ -71,15 +71,8 @@ export default async function ClubDashboardPage({
   const canAddCalendar = calendarList.length < maxCalendars;
 
   return (
-    <div
-      className="min-h-[100dvh] px-4 py-8"
-      style={
-        {
-          "--club-primary": club.primary_color ?? "#1A4382",
-          "--club-secondary": club.secondary_color ?? "#E8C061",
-        } as React.CSSProperties
-      }
-    >
+    <div className="min-h-[100dvh] px-4 py-8">
+
       <div className="max-w-3xl mx-auto">
         <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>

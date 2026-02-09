@@ -92,6 +92,21 @@ alter table public.club_members enable row level security;
 alter table public.club_invites enable row level security;
 alter table public.subscriptions enable row level security;
 
+-- Helper: vérifie si auth.uid() est membre du club (SECURITY DEFINER = contourne RLS sur club_members, évite récursion)
+-- Doit être créée par un rôle avec BYPASSRLS (ex. postgres) pour que la lecture de club_members ne déclenche pas les policies
+create or replace function public.is_member_of_club(cid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.club_members
+    where club_id = cid and user_id = auth.uid()
+  );
+$$;
+
 drop policy if exists "Users can read all profiles" on public.profiles;
 drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can read all profiles" on public.profiles for select using (true);
@@ -99,18 +114,26 @@ create policy "Users can update own profile" on public.profiles for update using
 create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
 
 drop policy if exists "Members can view club" on public.clubs;
+drop policy if exists "Owners can view own club" on public.clubs;
 drop policy if exists "Users can create club" on public.clubs;
 drop policy if exists "Owners can update club" on public.clubs;
+-- Owner voit son club sans lire club_members. Membres (coachs) via fonction qui contourne RLS → pas de récursion
+create policy "Owners can view own club" on public.clubs for select
+  using (owner_id = auth.uid());
 create policy "Members can view club" on public.clubs for select
-  using (exists (select 1 from public.club_members where club_id = clubs.id and user_id = auth.uid()));
+  using (public.is_member_of_club(id));
 create policy "Users can create club" on public.clubs for insert with check (auth.uid() = owner_id);
 create policy "Owners can update club" on public.clubs for update using (owner_id = auth.uid());
 
 drop policy if exists "Members can view club_members" on public.club_members;
 drop policy if exists "Owners can insert members" on public.club_members;
 drop policy if exists "Owners can delete members" on public.club_members;
+-- Lecture club_members : sa propre ligne OU owner du club (via clubs uniquement → pas de récursion)
 create policy "Members can view club_members" on public.club_members for select
-  using (exists (select 1 from public.club_members m where m.club_id = club_members.club_id and m.user_id = auth.uid()));
+  using (
+    user_id = auth.uid()
+    or exists (select 1 from public.clubs where id = club_members.club_id and owner_id = auth.uid())
+  );
 create policy "Owners can insert members" on public.club_members for insert
   with check (exists (select 1 from public.clubs where id = club_id and owner_id = auth.uid()));
 create policy "Owners can delete members" on public.club_members for delete
@@ -130,9 +153,9 @@ create policy "Owners can delete club_invites" on public.club_invites for delete
   using (exists (select 1 from public.clubs where id = club_id and owner_id = auth.uid()));
 
 -- Calendars : remplacer policies public par club/members
-alter table public.calendars drop policy if exists "Allow public read";
-alter table public.calendars drop policy if exists "Allow public insert";
-alter table public.calendars drop policy if exists "Allow public update";
+drop policy if exists "Allow public read" on public.calendars;
+drop policy if exists "Allow public insert" on public.calendars;
+drop policy if exists "Allow public update" on public.calendars;
 create policy "Anyone can read calendar" on public.calendars for select using (true);
 create policy "Club members can insert calendar" on public.calendars for insert
   with check (

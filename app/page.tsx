@@ -6,29 +6,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Calendar,
-  FileDown,
-  Link2,
-  Smartphone,
-  Users,
-} from "lucide-react";
-import Image from "next/image";
+import { Calendar, FileDown, Link2, Smartphone, Users } from "lucide-react";
 import Link from "next/link";
-
-import logo from "@/assets/images/logo-andernos-sport.avif";
 
 export default function LandingPage() {
   return (
     <main className="min-h-[100dvh] flex flex-col">
       <header className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-border">
         <div className="flex items-center gap-2">
-          <Image
-            src={logo}
-            alt="Football Calendar Sync"
-            className="h-9 w-auto object-contain"
-            priority
-          />
           <span className="font-semibold text-foreground hidden sm:inline">
             Football Calendar Sync
           </span>
@@ -155,11 +140,13 @@ export default function LandingPage() {
 
       <section className="px-4 py-12 sm:py-16 flex flex-col items-center text-center">
         <Smartphone className="h-12 w-12 text-primary mb-4" />
-        <h2 className="text-xl font-bold">Les parents s&apos;abonnent en un clic</h2>
+        <h2 className="text-xl font-bold">
+          Les parents s&apos;abonnent en un clic
+        </h2>
         <p className="mt-2 text-muted-foreground max-w-md">
           Le coach envoie le lien du calendrier. Les parents ouvrent le lien,
-          cliquent « S&apos;abonner au calendrier » : les matchs apparaissent sur
-          leur téléphone. Pas de compte requis.
+          cliquent « S&apos;abonner au calendrier » : les matchs apparaissent
+          sur leur téléphone. Pas de compte requis.
         </p>
         <Button asChild size="lg" className="mt-6">
           <Link href="/signup">Créer un compte et essayer</Link>

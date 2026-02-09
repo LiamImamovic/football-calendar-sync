@@ -66,7 +66,7 @@ export default function NewTeamPage() {
       return;
     }
     router.push(
-      `/dashboard/clubs/${clubSlug}/team/${(calendar as { id: string }).id}`
+      `/dashboard/clubs/${clubSlug}/team/${(calendar as { id: string }).id}`,
     );
     router.refresh();
   }
@@ -88,7 +88,7 @@ export default function NewTeamPage() {
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Création…" : "Créer l&apos;équipe"}
+            {loading ? "Création…" : "Créer l'équipe"}
           </Button>
           <Button type="button" variant="outline" asChild>
             <Link href={`/dashboard/clubs/${clubSlug}`}>Annuler</Link>

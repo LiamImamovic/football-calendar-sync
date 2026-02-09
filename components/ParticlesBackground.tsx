@@ -1,7 +1,6 @@
 "use client";
 
 const PARTICLE_COUNT = 60;
-const PARTICLE_COLOR = "#1A4382"; // bleu club
 
 function getParticleStyle(i: number) {
   const left = (i * 17 + 13) % 100;
@@ -14,7 +13,7 @@ function getParticleStyle(i: number) {
     top: `${top}%`,
     width: size,
     height: size,
-    backgroundColor: PARTICLE_COLOR,
+    backgroundColor: "var(--particles-color)",
     opacity: 0.22,
     animationDuration: `${duration}s`,
     animationDelay: `-${delay}s`,

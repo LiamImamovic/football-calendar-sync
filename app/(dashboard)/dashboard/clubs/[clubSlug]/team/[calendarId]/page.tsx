@@ -1,6 +1,5 @@
 "use client";
 
-import logo from "@/assets/images/logo-andernos-sport.avif";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCalendarById } from "@/hooks/use-calendar";
+import { useClub } from "@/hooks/use-club";
 import { copyToClipboard, getMapsUrl, randomUUID, shareUrl } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -67,9 +67,6 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
-const DOMICILE_ADDRESS =
-  "STADE JACQUES ROSAZZA 3 AV PIERRE DE COURBERTIN 33510 - ANDERNOS LES BAINS";
-
 type HomeAwayFilter = "all" | "home" | "away";
 
 export default function TeamCalendarPage() {
@@ -77,13 +74,18 @@ export default function TeamCalendarPage() {
   const router = useRouter();
   const clubSlug = params.clubSlug as string;
   const calendarId = params.calendarId as string;
-  const { calendar, loading, setCalendar, supabase } = useCalendarById(calendarId);
+  const { calendar, loading, setCalendar, supabase } =
+    useCalendarById(calendarId);
+  const { club } = useClub(clubSlug);
   const [addEventLoading, setAddEventLoading] = useState(false);
   const [addEventError, setAddEventError] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [copiedParents, setCopiedParents] = useState(false);
   const [eventIdToCancel, setEventIdToCancel] = useState<string | null>(null);
   const [homeAwayFilter, setHomeAwayFilter] = useState<HomeAwayFilter>("all");
+
+  const domicileAddress = club?.address ?? "";
+  const clubLogoUrl = club?.logo_url ?? null;
 
   const parentsShareUrl =
     typeof window !== "undefined" && calendar?.id
@@ -96,7 +98,7 @@ export default function TeamCalendarPage() {
       date: new Date(),
       time: "14:00",
       opponent: "",
-      location: DOMICILE_ADDRESS,
+      location: "",
       is_home: true,
     },
   });
@@ -106,6 +108,12 @@ export default function TeamCalendarPage() {
       router.push(`/dashboard/clubs/${clubSlug}`);
     }
   }, [loading, calendar, router, clubSlug]);
+
+  useEffect(() => {
+    if (club?.address && form.getValues("is_home")) {
+      form.setValue("location", club.address);
+    }
+  }, [club?.address]);
 
   async function onAddEvent(values: EventFormValues) {
     if (!calendar) return;
@@ -134,7 +142,7 @@ export default function TeamCalendarPage() {
         date: new Date(),
         time: "14:00",
         opponent: "",
-        location: form.getValues("is_home") ? DOMICILE_ADDRESS : "",
+        location: form.getValues("is_home") ? domicileAddress : "",
         is_home: form.getValues("is_home"),
       });
       toast.success("Match ajouté");
@@ -175,7 +183,7 @@ export default function TeamCalendarPage() {
         date: new Date(),
         time: "14:00",
         opponent: "",
-        location: DOMICILE_ADDRESS,
+        location: domicileAddress,
         is_home: true,
       });
       toast.success("Match modifié");
@@ -190,7 +198,7 @@ export default function TeamCalendarPage() {
       date: new Date(ev.date),
       time: format(new Date(ev.date), "HH:mm"),
       opponent: ev.opponent,
-      location: ev.is_home ? DOMICILE_ADDRESS : ev.location,
+      location: ev.is_home ? domicileAddress : ev.location,
       is_home: ev.is_home,
     });
     setEditingEventId(ev.id);
@@ -203,7 +211,7 @@ export default function TeamCalendarPage() {
       date: new Date(),
       time: "14:00",
       opponent: "",
-      location: DOMICILE_ADDRESS,
+      location: domicileAddress,
       is_home: true,
     });
   }
@@ -268,18 +276,18 @@ export default function TeamCalendarPage() {
   ).length;
   const nextMatch =
     upcomingCount > 0
-      ? events.find(
+      ? (events.find(
           (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
-        ) ?? null
+        ) ?? null)
       : null;
   const nextMatchLabel = nextMatch
     ? isToday(new Date(nextMatch.date))
       ? "aujourd'hui"
       : isTomorrow(new Date(nextMatch.date))
-      ? "demain"
-      : differenceInDays(new Date(nextMatch.date), new Date()) <= 7
-      ? `dans ${differenceInDays(new Date(nextMatch.date), new Date())} jours`
-      : format(new Date(nextMatch.date), "d MMM", { locale: fr })
+        ? "demain"
+        : differenceInDays(new Date(nextMatch.date), new Date()) <= 7
+          ? `dans ${differenceInDays(new Date(nextMatch.date), new Date())} jours`
+          : format(new Date(nextMatch.date), "d MMM", { locale: fr })
     : null;
 
   return (
@@ -319,11 +327,18 @@ export default function TeamCalendarPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <Image
-          src={logo}
-          alt="Logo club"
-          className="h-10 w-10 sm:h-12 sm:w-auto object-contain shrink-0"
-        />
+        {clubLogoUrl ? (
+          <Image
+            src={clubLogoUrl}
+            alt="Logo club"
+            width={48}
+            height={48}
+            className="h-10 w-10 sm:h-12 sm:w-12 object-contain shrink-0 rounded"
+            unoptimized
+          />
+        ) : (
+          <span>LOGO</span>
+        )}
         <h1 className="text-xl font-bold text-foreground leading-tight sm:text-2xl">
           {calendar.team_name}
         </h1>
@@ -399,8 +414,13 @@ export default function TeamCalendarPage() {
                 {form.watch("is_home") ? (
                   <Input
                     id="location"
-                    value={DOMICILE_ADDRESS}
+                    value={domicileAddress}
                     readOnly
+                    placeholder={
+                      domicileAddress
+                        ? undefined
+                        : "Adresse du club (paramètres)"
+                    }
                     className="bg-muted/50"
                   />
                 ) : (
@@ -423,7 +443,7 @@ export default function TeamCalendarPage() {
                   checked={form.watch("is_home")}
                   onCheckedChange={(v) => {
                     form.setValue("is_home", v);
-                    form.setValue("location", v ? DOMICILE_ADDRESS : "");
+                    form.setValue("location", v ? domicileAddress : "");
                   }}
                 />
                 <Label
@@ -456,8 +476,8 @@ export default function TeamCalendarPage() {
                   {addEventLoading
                     ? "Enregistrement…"
                     : editingEventId
-                    ? "Enregistrer"
-                    : "Ajouter au calendrier"}
+                      ? "Enregistrer"
+                      : "Ajouter au calendrier"}
                 </Button>
               </div>
             </form>
@@ -475,8 +495,8 @@ export default function TeamCalendarPage() {
                   {events.length === 0
                     ? "Liste des matchs à venir et passés."
                     : nextMatchLabel
-                    ? `Prochain match : ${nextMatchLabel}.`
-                    : ""}
+                      ? `Prochain match : ${nextMatchLabel}.`
+                      : ""}
                 </CardDescription>
               </div>
               {events.length > 0 && (
@@ -529,8 +549,8 @@ export default function TeamCalendarPage() {
                 {homeAwayFilter === "home"
                   ? "à domicile"
                   : homeAwayFilter === "away"
-                  ? "à l'extérieur"
-                  : ""}
+                    ? "à l'extérieur"
+                    : ""}
                 .
               </p>
             ) : (
@@ -567,7 +587,7 @@ export default function TeamCalendarPage() {
                             className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{
                               backgroundColor: ev.is_home
-                                ? "#1A4382"
+                                ? "hsl(var(--primary))"
                                 : "#d97706",
                             }}
                             aria-hidden
@@ -681,7 +701,7 @@ export default function TeamCalendarPage() {
                                 className="inline-block w-2 h-2 rounded-full shrink-0 mr-2 align-middle"
                                 style={{
                                   backgroundColor: ev.is_home
-                                    ? "#1A4382"
+                                    ? "hsl(var(--primary))"
                                     : "#d97706",
                                 }}
                                 title={ev.is_home ? "Domicile" : "Extérieur"}
@@ -766,7 +786,7 @@ export default function TeamCalendarPage() {
                   <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       <span
-                        className="inline-block w-2 h-2 rounded-full bg-[#1A4382]"
+                        className="inline-block w-2 h-2 rounded-full bg-primary"
                         aria-hidden
                       />
                       Domicile

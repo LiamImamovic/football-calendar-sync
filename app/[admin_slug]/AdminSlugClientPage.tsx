@@ -1,6 +1,5 @@
 "use client";
 
-import logo from "@/assets/images/logo-andernos-sport.avif";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ClubThemeProvider } from "@/components/ClubThemeProvider";
 import { useCalendar } from "@/hooks/use-calendar";
+import { useClubById } from "@/hooks/use-club";
 import { supabase } from "@/lib/supabase";
 import { copyToClipboard, getMapsUrl, randomUUID, shareUrl } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/database";
@@ -66,14 +67,12 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
-const DOMICILE_ADDRESS =
-  "STADE JACQUES ROSAZZA 3 AV PIERRE DE COURBERTIN 33510 - ANDERNOS LES BAINS";
-
 type HomeAwayFilter = "all" | "home" | "away";
 
 export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
   const router = useRouter();
   const { calendar, loading, setCalendar } = useCalendar(adminSlug);
+  const { club } = useClubById(calendar?.club_id ?? undefined);
   const [addEventLoading, setAddEventLoading] = useState(false);
   const [addEventError, setAddEventError] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -81,6 +80,9 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
   const [copiedParents, setCopiedParents] = useState(false);
   const [eventIdToCancel, setEventIdToCancel] = useState<string | null>(null);
   const [homeAwayFilter, setHomeAwayFilter] = useState<HomeAwayFilter>("all");
+
+  const domicileAddress = club?.address ?? "";
+  const clubLogoUrl = club?.logo_url ?? null;
 
   const parentsShareUrl =
     typeof window !== "undefined" && calendar?.id
@@ -93,10 +95,16 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
       date: new Date(),
       time: "14:00",
       opponent: "",
-      location: DOMICILE_ADDRESS,
+      location: "",
       is_home: true,
     },
   });
+
+  useEffect(() => {
+    if (club?.address && form.getValues("is_home")) {
+      form.setValue("location", club.address);
+    }
+  }, [club?.address]);
 
   useEffect(() => {
     if (!loading && !calendar) router.push("/");
@@ -130,7 +138,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
         date: new Date(),
         time: "14:00",
         opponent: "",
-        location: form.getValues("is_home") ? DOMICILE_ADDRESS : "",
+        location: form.getValues("is_home") ? domicileAddress : "",
         is_home: form.getValues("is_home"),
       });
       toast.success("Match ajouté");
@@ -171,7 +179,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
         date: new Date(),
         time: "14:00",
         opponent: "",
-        location: DOMICILE_ADDRESS,
+        location: domicileAddress,
         is_home: true,
       });
       toast.success("Match modifié");
@@ -186,7 +194,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
       date: new Date(ev.date),
       time: format(new Date(ev.date), "HH:mm"),
       opponent: ev.opponent,
-      location: ev.is_home ? DOMICILE_ADDRESS : ev.location,
+      location: ev.is_home ? domicileAddress : ev.location,
       is_home: ev.is_home,
     });
     setEditingEventId(ev.id);
@@ -199,7 +207,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
       date: new Date(),
       time: "14:00",
       opponent: "",
-      location: DOMICILE_ADDRESS,
+      location: domicileAddress,
       is_home: true,
     });
   }
@@ -266,21 +274,22 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
   ).length;
   const nextMatch =
     upcomingCount > 0
-      ? events.find(
+      ? (events.find(
           (e) => notCancelled(e) && new Date(e.date) >= startOfToday,
-        ) ?? null
+        ) ?? null)
       : null;
   const nextMatchLabel = nextMatch
     ? isToday(new Date(nextMatch.date))
       ? "aujourd'hui"
       : isTomorrow(new Date(nextMatch.date))
-      ? "demain"
-      : differenceInDays(new Date(nextMatch.date), new Date()) <= 7
-      ? `dans ${differenceInDays(new Date(nextMatch.date), new Date())} jours`
-      : format(new Date(nextMatch.date), "d MMM", { locale: fr })
+        ? "demain"
+        : differenceInDays(new Date(nextMatch.date), new Date()) <= 7
+          ? `dans ${differenceInDays(new Date(nextMatch.date), new Date())} jours`
+          : format(new Date(nextMatch.date), "d MMM", { locale: fr })
     : null;
 
   return (
+    <ClubThemeProvider primaryColor={club?.primary_color ?? null} secondaryColor={club?.secondary_color ?? null}>
     <main className="min-h-[100dvh] p-4 pb-8 max-w-4xl mx-auto sm:p-6">
       <AlertDialog
         open={eventIdToCancel !== null}
@@ -312,11 +321,18 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
       </AlertDialog>
 
       <header className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8">
-        <Image
-          src={logo}
-          alt="Logo club"
-          className="h-10 w-10 sm:h-12 sm:w-auto object-contain shrink-0"
-        />
+        {clubLogoUrl ? (
+          <Image
+            src={clubLogoUrl}
+            alt="Logo club"
+            width={48}
+            height={48}
+            className="h-10 w-10 sm:h-12 sm:w-12 object-contain shrink-0 rounded"
+            unoptimized
+          />
+        ) : (
+          <span>LOGO</span>
+        )}
         <h1 className="text-xl font-bold text-foreground leading-tight sm:text-2xl">
           {calendar.team_name}
         </h1>
@@ -392,7 +408,12 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                 {form.watch("is_home") ? (
                   <Input
                     id="location"
-                    value={DOMICILE_ADDRESS}
+                    value={domicileAddress}
+                    placeholder={
+                      domicileAddress
+                        ? undefined
+                        : "Adresse du club (paramètres)"
+                    }
                     readOnly
                     className="bg-muted/50"
                   />
@@ -416,7 +437,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                   checked={form.watch("is_home")}
                   onCheckedChange={(v) => {
                     form.setValue("is_home", v);
-                    form.setValue("location", v ? DOMICILE_ADDRESS : "");
+                    form.setValue("location", v ? domicileAddress : "");
                   }}
                 />
                 <Label
@@ -449,8 +470,8 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                   {addEventLoading
                     ? "Enregistrement…"
                     : editingEventId
-                    ? "Enregistrer"
-                    : "Ajouter au calendrier"}
+                      ? "Enregistrer"
+                      : "Ajouter au calendrier"}
                 </Button>
               </div>
             </form>
@@ -468,8 +489,8 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                   {events.length === 0
                     ? "Liste des matchs à venir et passés."
                     : nextMatchLabel
-                    ? `Prochain match : ${nextMatchLabel}.`
-                    : ""}
+                      ? `Prochain match : ${nextMatchLabel}.`
+                      : ""}
                 </CardDescription>
               </div>
               {events.length > 0 && (
@@ -522,8 +543,8 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                 {homeAwayFilter === "home"
                   ? "à domicile"
                   : homeAwayFilter === "away"
-                  ? "à l'extérieur"
-                  : ""}
+                    ? "à l'extérieur"
+                    : ""}
                 .
               </p>
             ) : (
@@ -561,7 +582,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                             className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{
                               backgroundColor: ev.is_home
-                                ? "#1A4382"
+                                ? "hsl(var(--primary))"
                                 : "#d97706",
                             }}
                             aria-hidden
@@ -678,7 +699,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                                 className="inline-block w-2 h-2 rounded-full shrink-0 mr-2 align-middle"
                                 style={{
                                   backgroundColor: ev.is_home
-                                    ? "#1A4382"
+                                    ? "hsl(var(--primary))"
                                     : "#d97706",
                                 }}
                                 title={ev.is_home ? "Domicile" : "Extérieur"}
@@ -763,7 +784,7 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
                   <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       <span
-                        className="inline-block w-2 h-2 rounded-full bg-[#1A4382]"
+                        className="inline-block w-2 h-2 rounded-full bg-primary"
                         aria-hidden
                       />
                       Domicile
@@ -941,5 +962,6 @@ export function AdminSlugClientPage({ adminSlug }: { adminSlug: string }) {
         </Card>
       </section>
     </main>
+    </ClubThemeProvider>
   );
 }

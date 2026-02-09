@@ -5,8 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
+
+const BUCKET_LOGO = "club-logos";
 
 function slugify(text: string): string {
   return text
@@ -23,10 +27,13 @@ export default function NewClubPage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [slug, setSlug] = useState("");
-  const [primaryColor, setPrimaryColor] = useState("#1A4382");
-  const [secondaryColor, setSecondaryColor] = useState("#E8C061");
+  const [primaryColor, setPrimaryColor] = useState("#2563eb");
+  const [secondaryColor, setSecondaryColor] = useState("#f59e0b");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   function handleNameChange(value: string) {
     setName(value);
@@ -65,8 +72,23 @@ export default function NewClubPage() {
       return;
     }
 
+    const clubId = (club as { id: string }).id;
+    if (logoFile) {
+      const ext = logoFile.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `${clubId}/logo.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET_LOGO)
+        .upload(path, logoFile, { upsert: true });
+      if (uploadError) {
+        toast.error("Logo : " + (uploadError.message ?? "upload impossible. Vérifiez les policies Storage (bucket club-logos)."));
+      } else {
+        const { data: urlData } = supabase.storage.from(BUCKET_LOGO).getPublicUrl(path);
+        await supabase.from("clubs").update({ logo_url: urlData.publicUrl }).eq("id", clubId);
+      }
+    }
+
     await supabase.from("club_members").insert({
-      club_id: (club as { id: string }).id,
+      club_id: clubId,
       user_id: user.id,
       role: "owner",
     });
@@ -78,7 +100,7 @@ export default function NewClubPage() {
       .single();
     if (plan) {
       await supabase.from("subscriptions").insert({
-        club_id: (club as { id: string }).id,
+        club_id: clubId,
         plan_id: "free",
       });
     }
@@ -98,7 +120,7 @@ export default function NewClubPage() {
             id="name"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="ex: FC Andernos"
+            placeholder="ex: FC Mon Club"
             required
             disabled={loading}
           />
@@ -114,12 +136,64 @@ export default function NewClubPage() {
           />
         </div>
         <div className="space-y-2">
+          <Label>Logo du club (optionnel)</Label>
+          <div className="flex items-center gap-4">
+            {logoPreview && (
+              <div className="relative h-16 w-16 rounded border border-border overflow-hidden bg-muted">
+                <Image src={logoPreview} alt="Aperçu" fill className="object-contain" unoptimized />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setLogoFile(f);
+                    setLogoPreview(URL.createObjectURL(f));
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={loading}
+              >
+                {logoFile ? "Changer" : "Choisir un fichier"}
+              </Button>
+              {logoFile && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setLogoFile(null);
+                    if (logoPreview) URL.revokeObjectURL(logoPreview);
+                    setLogoPreview(null);
+                    if (logoInputRef.current) logoInputRef.current.value = "";
+                  }}
+                >
+                  Retirer
+                </Button>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Créez un bucket &quot;club-logos&quot; (public) dans Supabase Storage si besoin.
+          </p>
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="slug">Slug (URL)</Label>
           <Input
             id="slug"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
-            placeholder="fc-andernos"
+            placeholder="fc-mon-club"
             disabled={loading}
           />
           <p className="text-xs text-muted-foreground">
