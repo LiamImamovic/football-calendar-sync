@@ -24,10 +24,22 @@ function SignupForm() {
     setError("");
     setLoading(true);
     const supabase = createClient();
+
+    // Build emailRedirectTo so the confirmation email links back to the invite
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const redirectAfterConfirm = inviteToken
+      ? `${baseUrl}/auth/callback?next=${encodeURIComponent(`/invite?token=${inviteToken}`)}`
+      : `${baseUrl}/auth/callback?next=/dashboard`;
+
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { full_name: fullName.trim() || undefined } },
+      options: {
+        data: { full_name: fullName.trim() || undefined },
+        emailRedirectTo: redirectAfterConfirm,
+      },
     });
     setLoading(false);
     if (signUpError) {

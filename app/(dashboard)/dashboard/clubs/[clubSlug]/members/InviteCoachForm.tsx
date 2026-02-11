@@ -49,10 +49,10 @@ export function InviteCoachForm({
       setError(insertError.message ?? "Erreur lors de l'invitation.");
       return;
     }
-    const inviteUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/invite?token=${token}`
-        : "";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const inviteUrl = `${baseUrl}/invite?token=${token}`;
     toast.success("Invitation créée. Envoyez ce lien au coach : " + inviteUrl);
     setEmail("");
     router.refresh();
