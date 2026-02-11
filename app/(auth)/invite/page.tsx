@@ -4,24 +4,107 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+
+type InviteInfo = {
+  club_name: string;
+  inviter_name: string;
+  invited_email: string;
+};
+
+type Status =
+  | "loading"
+  | "signup"
+  | "accepting"
+  | "success"
+  | "error"
+  | "email_mismatch"
+  | "expired";
 
 function InviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const [status, setStatus] = useState<"loading" | "success" | "error" | "signup" | "email_mismatch">("loading");
+  const [status, setStatus] = useState<Status>("loading");
+  const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
   const [clubName, setClubName] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // Fetch invite info (no auth required)
+  const fetchInviteInfo = useCallback(async () => {
+    if (!token) return null;
+    try {
+      const res = await fetch(`/api/invite-info?token=${token}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 410) {
+          setStatus("expired");
+          return null;
+        }
+        setErrorMsg(data.error || "Invitation introuvable");
+        setStatus("error");
+        return null;
+      }
+      const data: InviteInfo = await res.json();
+      setInviteInfo(data);
+      return data;
+    } catch {
+      setStatus("error");
+      return null;
+    }
+  }, [token]);
+
+  // Accept invite via API (auth required)
+  const acceptInvite = useCallback(async () => {
+    if (!token) return;
+    setStatus("accepting");
+    try {
+      const res = await fetch("/api/accept-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 403) {
+          setStatus("email_mismatch");
+          return;
+        }
+        if (res.status === 410) {
+          setStatus("expired");
+          return;
+        }
+        setErrorMsg(data.error || "Erreur lors de l'acceptation");
+        setStatus("error");
+        return;
+      }
+      setClubName(data.club_name || "");
+      setStatus("success");
+      if (data.club_slug) {
+        router.replace(`/dashboard/clubs/${data.club_slug}`);
+        router.refresh();
+      }
+    } catch {
+      setErrorMsg("Erreur réseau");
+      setStatus("error");
+    }
+  }, [token, router]);
 
   useEffect(() => {
     if (!token) {
       setStatus("error");
+      setErrorMsg("Lien d'invitation invalide");
       return;
     }
 
     let cancelled = false;
 
-    async function acceptInvite() {
+    async function init() {
+      // 1. Fetch invite details
+      const info = await fetchInviteInfo();
+      if (cancelled || !info) return;
+
+      // 2. Check if user is authenticated
       const supabase = createClient();
       const {
         data: { user },
@@ -32,63 +115,17 @@ function InviteContent() {
         return;
       }
 
-      const { data: invite, error: inviteError } = await supabase
-        .from("club_invites")
-        .select("club_id, email")
-        .eq("token", token)
-        .gt("expires_at", new Date().toISOString())
-        .single();
-
-      if (cancelled) return;
-      if (inviteError || !invite) {
-        setStatus("error");
-        return;
-      }
-
-      const inviteRow = invite as { club_id: string; email: string };
-      if (inviteRow.email.toLowerCase() !== (user.email ?? "").toLowerCase()) {
-        setStatus("email_mismatch");
-        return;
-      }
-
-      const cid = inviteRow.club_id;
-
-      const { error: insertError } = await supabase.from("club_members").insert({
-        club_id: cid,
-        user_id: user.id,
-        role: "coach",
-      });
-
-      if (insertError) {
-        setStatus("error");
-        return;
-      }
-
-      await supabase.from("club_invites").delete().eq("token", token);
-
-      const { data: clubData } = await supabase
-        .from("clubs")
-        .select("name, slug")
-        .eq("id", cid)
-        .single();
-      const slug = (clubData as { slug: string } | null)?.slug;
-      if (clubData) setClubName((clubData as { name: string }).name);
-
-      if (!cancelled) {
-        setStatus("success");
-        if (slug) {
-          router.replace(`/dashboard/clubs/${slug}`);
-          router.refresh();
-        }
-      }
+      // 3. User is authenticated → accept the invite
+      if (!cancelled) await acceptInvite();
     }
 
-    acceptInvite();
+    init();
     return () => {
       cancelled = true;
     };
-  }, [token, router]);
+  }, [token, fetchInviteInfo, acceptInvite]);
 
+  // --- Loading ---
   if (status === "loading") {
     return (
       <div className="text-center py-8">
@@ -103,13 +140,59 @@ function InviteContent() {
     );
   }
 
+  // --- Accepting ---
+  if (status === "accepting") {
+    return (
+      <div className="text-center py-8">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"
+          aria-hidden
+        />
+        {inviteInfo && (
+          <p className="mt-4 text-muted-foreground text-sm">
+            Vous rejoignez <strong>{inviteInfo.club_name}</strong>…
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // --- Signup / Login required ---
   if (status === "signup") {
     const loginUrl = `/login?redirect=${encodeURIComponent(`/invite?token=${token}`)}`;
     return (
       <>
-        <h1 className="text-2xl font-bold text-center mb-2">
-          Invitation à rejoindre un club
-        </h1>
+        {inviteInfo && (
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-4">
+              <svg
+                className="w-7 h-7 text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold mb-2">
+              Invitation à rejoindre un club
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              <strong>{inviteInfo.inviter_name}</strong> vous invite à rejoindre{" "}
+              <strong>{inviteInfo.club_name}</strong>.
+            </p>
+          </div>
+        )}
+        {!inviteInfo && (
+          <h1 className="text-2xl font-bold text-center mb-2">
+            Invitation à rejoindre un club
+          </h1>
+        )}
         <p className="text-muted-foreground text-center text-sm mb-6">
           Créez un compte ou connectez-vous pour accepter cette invitation.
         </p>
@@ -125,6 +208,7 @@ function InviteContent() {
     );
   }
 
+  // --- Email mismatch ---
   if (status === "email_mismatch") {
     return (
       <>
@@ -132,7 +216,8 @@ function InviteContent() {
           Mauvais compte
         </h1>
         <p className="text-muted-foreground text-center text-sm mb-6">
-          Cette invitation a été envoyée à une autre adresse email. Déconnectez-vous et connectez-vous avec le compte invité.
+          Cette invitation a été envoyée à une autre adresse email.
+          Déconnectez-vous et connectez-vous avec le bon compte.
         </p>
         <div className="flex flex-col gap-3">
           <Button asChild variant="outline" size="lg" className="w-full">
@@ -146,14 +231,33 @@ function InviteContent() {
     );
   }
 
+  // --- Expired ---
+  if (status === "expired") {
+    return (
+      <>
+        <h1 className="text-2xl font-bold text-center mb-2">
+          Invitation expirée
+        </h1>
+        <p className="text-muted-foreground text-center text-sm mb-6">
+          Cette invitation a expiré. Demandez au propriétaire du club de vous
+          renvoyer une invitation.
+        </p>
+        <Button asChild className="w-full" size="lg">
+          <Link href="/login">Se connecter</Link>
+        </Button>
+      </>
+    );
+  }
+
+  // --- Error ---
   if (status === "error") {
     return (
       <>
         <h1 className="text-2xl font-bold text-center mb-2">
-          Lien invalide ou expiré
+          Lien invalide
         </h1>
         <p className="text-muted-foreground text-center text-sm mb-6">
-          Cette invitation n&apos;existe pas ou a expiré.
+          {errorMsg || "Cette invitation n'existe pas ou a expiré."}
         </p>
         <Button asChild className="w-full" size="lg">
           <Link href="/dashboard">Aller au tableau de bord</Link>
@@ -162,11 +266,30 @@ function InviteContent() {
     );
   }
 
+  // --- Success ---
   return (
     <>
-      <h1 className="text-2xl font-bold text-center mb-2">Bienvenue !</h1>
+      <div className="text-center mb-4">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 mb-4">
+          <svg
+            className="w-7 h-7 text-green-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Bienvenue !</h1>
+      </div>
       <p className="text-muted-foreground text-center text-sm mb-6">
-        Vous avez rejoint le club {clubName || "."}
+        Vous avez rejoint le club{" "}
+        <strong>{clubName || inviteInfo?.club_name || ""}</strong>.
       </p>
       <Button asChild className="w-full" size="lg">
         <Link href="/dashboard">Aller au tableau de bord</Link>
