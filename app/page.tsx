@@ -1,3 +1,4 @@
+import { TypewriterHeading } from "@/components/landing/TypewriterHeading";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -6,13 +7,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Calendar, FileDown, Link2, Smartphone, Users } from "lucide-react";
+import {
+  Calendar,
+  ChevronRight,
+  FileDown,
+  Link2,
+  Smartphone,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 
 export default function LandingPage() {
   return (
     <main className="min-h-[100dvh] flex flex-col">
-      <header className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-border">
+      {/* Header */}
+      <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-4 sm:px-6 border-b border-border/80 bg-background/80 backdrop-blur-md">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-foreground hidden sm:inline">
             Football Calendar Sync
@@ -22,65 +31,84 @@ export default function LandingPage() {
           <Button variant="ghost" asChild size="sm">
             <Link href="/login">Se connecter</Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="cta-glow">
             <Link href="/signup">Commencer gratuitement</Link>
           </Button>
         </nav>
       </header>
 
-      <section className="flex-1 flex flex-col items-center justify-center px-4 py-12 sm:py-16 text-center">
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground leading-tight max-w-2xl">
-          Ne ratez plus jamais un match
-        </h1>
-        <p className="mt-4 text-lg text-muted-foreground max-w-xl">
+      {/* Hero */}
+      <section className="flex-1 flex flex-col items-center justify-center px-4 py-16 sm:py-20 text-center">
+        <div className="landing-animate landing-animate-delay-1 flex justify-center">
+          <TypewriterHeading />
+        </div>
+        <p className="mt-6 text-lg text-muted-foreground max-w-xl landing-animate landing-animate-delay-2">
           Créez un calendrier pour votre équipe, partagez-le aux parents.
           Abonnement .ics et PDF en un clic.
         </p>
-        <div className="mt-8 flex flex-wrap gap-4 justify-center">
-          <Button asChild size="lg" className="min-h-[48px]">
+        <div className="mt-10 flex flex-wrap gap-4 justify-center landing-animate landing-animate-delay-3">
+          <Button
+            asChild
+            size="lg"
+            className="min-h-[48px] cta-glow text-base px-6"
+          >
             <Link href="/signup">Commencer gratuitement</Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="min-h-[48px]">
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="min-h-[48px] text-base"
+          >
             <Link href="/login">J&apos;ai déjà un compte</Link>
           </Button>
         </div>
       </section>
 
-      <section className="px-4 py-12 sm:py-16 border-t border-border">
-        <h2 className="text-2xl font-bold text-center mb-8">
+      {/* Bento features */}
+      <section className="px-4 py-16 sm:py-20 border-t border-border/60">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12 landing-animate">
           Pour les clubs et les coachs
         </h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <Calendar className="h-10 w-10 text-primary mb-2" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+          <Card className="bento-card lg:col-span-1 landing-animate landing-animate-delay-1 overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-2">
+                <Calendar className="h-6 w-6" />
+              </div>
               <CardTitle className="text-base">Calendrier partagé</CardTitle>
               <CardDescription>
                 Ajoutez les matchs, les parents voient tout à jour.
               </CardDescription>
             </CardHeader>
           </Card>
-          <Card>
-            <CardHeader>
-              <Link2 className="h-10 w-10 text-primary mb-2" />
+          <Card className="bento-card lg:col-span-1 landing-animate landing-animate-delay-2 overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-2">
+                <Link2 className="h-6 w-6" />
+              </div>
               <CardTitle className="text-base">Lien .ics</CardTitle>
               <CardDescription>
                 Un lien à envoyer : abonnement direct sur iPhone et Android.
               </CardDescription>
             </CardHeader>
           </Card>
-          <Card>
-            <CardHeader>
-              <FileDown className="h-10 w-10 text-primary mb-2" />
+          <Card className="bento-card lg:col-span-1 landing-animate landing-animate-delay-3 overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-2">
+                <FileDown className="h-6 w-6" />
+              </div>
               <CardTitle className="text-base">PDF à télécharger</CardTitle>
               <CardDescription>
                 Les parents peuvent télécharger le calendrier en PDF.
               </CardDescription>
             </CardHeader>
           </Card>
-          <Card>
-            <CardHeader>
-              <Users className="h-10 w-10 text-primary mb-2" />
+          <Card className="bento-card lg:col-span-1 landing-animate landing-animate-delay-4 overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-2">
+                <Users className="h-6 w-6" />
+              </div>
               <CardTitle className="text-base">Plusieurs équipes</CardTitle>
               <CardDescription>
                 Un club, plusieurs coachs et équipes, tout centralisé.
@@ -90,10 +118,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="px-4 py-12 sm:py-16 bg-muted/30">
-        <h2 className="text-2xl font-bold text-center mb-8">Tarifs</h2>
+      {/* Pricing */}
+      <section className="px-4 py-16 sm:py-20 bg-muted/30 border-t border-border/60">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10">
+          Tarifs
+        </h2>
         <div className="grid gap-6 sm:grid-cols-3 max-w-3xl mx-auto">
-          <Card>
+          <Card className="bento-card">
             <CardHeader>
               <CardTitle>Gratuit</CardTitle>
               <CardDescription>Pour démarrer</CardDescription>
@@ -106,7 +137,7 @@ export default function LandingPage() {
               <p>Toutes les fonctionnalités de base</p>
             </CardContent>
           </Card>
-          <Card className="border-primary shadow-md">
+          <Card className="bento-card border-primary shadow-lg ring-2 ring-primary/20">
             <CardHeader>
               <CardTitle>Pro</CardTitle>
               <CardDescription>Clubs actifs</CardDescription>
@@ -119,7 +150,7 @@ export default function LandingPage() {
               <p>Idéal pour plusieurs équipes</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bento-card">
             <CardHeader>
               <CardTitle>Club</CardTitle>
               <CardDescription>Gros clubs</CardDescription>
@@ -138,22 +169,28 @@ export default function LandingPage() {
         </p>
       </section>
 
-      <section className="px-4 py-12 sm:py-16 flex flex-col items-center text-center">
-        <Smartphone className="h-12 w-12 text-primary mb-4" />
-        <h2 className="text-xl font-bold">
+      {/* CTA parents */}
+      <section className="px-4 py-16 sm:py-20 flex flex-col items-center text-center border-t border-border/60">
+        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
+          <Smartphone className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl sm:text-2xl font-bold">
           Les parents s&apos;abonnent en un clic
         </h2>
-        <p className="mt-2 text-muted-foreground max-w-md">
+        <p className="mt-3 text-muted-foreground max-w-md">
           Le coach envoie le lien du calendrier. Les parents ouvrent le lien,
           cliquent « S&apos;abonner au calendrier » : les matchs apparaissent
           sur leur téléphone. Pas de compte requis.
         </p>
-        <Button asChild size="lg" className="mt-6">
-          <Link href="/signup">Créer un compte et essayer</Link>
+        <Button asChild size="lg" className="mt-8 cta-glow" variant="default">
+          <Link href="/signup">
+            Créer un compte et essayer
+            <ChevronRight className="ml-1 h-4 w-4 inline" />
+          </Link>
         </Button>
       </section>
 
-      <footer className="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border/80 px-4 py-8 text-center text-sm text-muted-foreground bg-muted/20">
         <p>Football Calendar Sync — Calendriers partagés pour les équipes.</p>
       </footer>
     </main>
