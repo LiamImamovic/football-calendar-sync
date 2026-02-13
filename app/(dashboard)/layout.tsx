@@ -31,7 +31,7 @@ export default async function DashboardLayout({
             href="/dashboard/clubs"
             className="text-muted-foreground hover:text-foreground text-sm"
           >
-            Mes clubs
+            Mon club
           </Link>
         </nav>
         <div className="flex items-center gap-2">

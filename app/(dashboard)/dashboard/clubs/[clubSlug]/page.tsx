@@ -9,7 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Calendar, Link2, Plus, Settings, Users } from "lucide-react";
+import { Calendar, Plus, Settings, Users } from "lucide-react";
+import { CalendarList } from "./CalendarList";
 
 export default async function ClubDashboardPage({
   params,
@@ -143,37 +144,7 @@ export default async function ClubDashboardPage({
               </CardContent>
             </Card>
           ) : (
-            <ul className="space-y-3">
-              {calendarList.map((cal) => (
-                <li key={cal.id}>
-                  <Card>
-                    <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
-                      <div>
-                        <p className="font-medium">{cal.team_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Lien parents : /s/{cal.id}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link
-                            href={`/dashboard/clubs/${club.slug}/team/${cal.id}`}
-                          >
-                            <Link2 className="h-4 w-4 mr-2" />
-                            Modifier
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/s/${cal.id}`} target="_blank">
-                            Voir page parents
-                          </Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </li>
-              ))}
-            </ul>
+            <CalendarList calendarList={calendarList} clubSlug={club.slug} />
           )}
         </section>
       </div>

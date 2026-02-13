@@ -43,14 +43,29 @@ function CopyInviteLinkButton({
   );
 }
 
+function memberDisplay(
+  m: Member,
+  currentUserId: string
+): { name: string; email: string | null } {
+  const isYou = m.user_id === currentUserId;
+  const rawName = m.profiles?.full_name?.trim() || null;
+  const email = m.profiles?.email ?? null;
+  const name = isYou
+    ? "Vous"
+    : rawName || email || "—";
+  return { name, email };
+}
+
 export function MembersList({
   members,
   invites,
   appUrl,
+  currentUserId,
 }: {
   members: Member[];
   invites: Invite[];
   appUrl: string;
+  currentUserId: string;
 }) {
   return (
     <div className="space-y-6">
@@ -61,26 +76,25 @@ export function MembersList({
           l&apos;invitation).
         </p>
         <ul className="space-y-2">
-          {members.map((m) => (
-            <li
-              key={m.id}
-              className="flex items-center justify-between py-2 border-b border-border last:border-0"
-            >
-              <div>
-                <p className="font-medium">
-                  {m.profiles?.full_name || m.profiles?.email || m.user_id}
-                </p>
-                {m.profiles?.email && (
-                  <p className="text-sm text-muted-foreground">
-                    {m.profiles.email}
-                  </p>
-                )}
-              </div>
-              <span className="text-sm rounded-full bg-muted px-2 py-0.5">
-                {m.role === "owner" ? "Propriétaire" : "Coach"}
-              </span>
-            </li>
-          ))}
+          {members.map((m) => {
+            const { name, email } = memberDisplay(m, currentUserId);
+            return (
+              <li
+                key={m.id}
+                className="flex items-center justify-between py-2 border-b border-border last:border-0"
+              >
+                <div>
+                  <p className="font-medium">{name}</p>
+                  {email && (
+                    <p className="text-sm text-muted-foreground">{email}</p>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                  {m.role === "owner" ? "Propriétaire" : "Coach"}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
@@ -119,10 +133,18 @@ export function MembersList({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5">
-                    En attente
-                  </span>
-                  <CopyInviteLinkButton token={inv.token} appUrl={appUrl} />
+                  {new Date(inv.expires_at) > new Date() ? (
+                    <>
+                      <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5">
+                        En attente
+                      </span>
+                      <CopyInviteLinkButton token={inv.token} appUrl={appUrl} />
+                    </>
+                  ) : (
+                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                      Expirée
+                    </span>
+                  )}
                 </div>
               </li>
             ))}
