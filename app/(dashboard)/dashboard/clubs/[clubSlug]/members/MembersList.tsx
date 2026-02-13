@@ -43,19 +43,17 @@ function CopyInviteLinkButton({
   );
 }
 
-function memberDisplayName(
+function memberDisplay(
   m: Member,
   currentUserId: string
-): { primary: string; secondary: string | null } {
+): { name: string; email: string | null } {
   const isYou = m.user_id === currentUserId;
-  const name = m.profiles?.full_name?.trim() || m.profiles?.email || null;
-  if (isYou) {
-    return { primary: "Vous", secondary: name || null };
-  }
-  return {
-    primary: name || "Membre",
-    secondary: m.profiles?.email && name !== m.profiles?.email ? m.profiles.email : null,
-  };
+  const rawName = m.profiles?.full_name?.trim() || null;
+  const email = m.profiles?.email ?? null;
+  const name = isYou
+    ? "Vous"
+    : rawName || email || "—";
+  return { name, email };
 }
 
 export function MembersList({
@@ -79,21 +77,19 @@ export function MembersList({
         </p>
         <ul className="space-y-2">
           {members.map((m) => {
-            const { primary, secondary } = memberDisplayName(m, currentUserId);
+            const { name, email } = memberDisplay(m, currentUserId);
             return (
               <li
                 key={m.id}
                 className="flex items-center justify-between py-2 border-b border-border last:border-0"
               >
                 <div>
-                  <p className="font-medium">{primary}</p>
-                  {secondary && (
-                    <p className="text-sm text-muted-foreground">
-                      {secondary}
-                    </p>
+                  <p className="font-medium">{name}</p>
+                  {email && (
+                    <p className="text-sm text-muted-foreground">{email}</p>
                   )}
                 </div>
-                <span className="text-sm rounded-full bg-muted px-2 py-0.5">
+                <span className="text-xs text-muted-foreground shrink-0 ml-2">
                   {m.role === "owner" ? "Propriétaire" : "Coach"}
                 </span>
               </li>

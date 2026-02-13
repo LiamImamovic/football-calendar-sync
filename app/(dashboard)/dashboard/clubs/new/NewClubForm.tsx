@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -13,20 +13,21 @@ import { toast } from "sonner";
 const BUCKET_LOGO = "club-logos";
 
 function slugify(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "club";
+  return (
+    text
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "club"
+  );
 }
 
 export default function NewClubForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [slug, setSlug] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#2563eb");
   const [secondaryColor, setSecondaryColor] = useState("#f59e0b");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -37,7 +38,6 @@ export default function NewClubForm() {
 
   function handleNameChange(value: string) {
     setName(value);
-    if (!slug || slug === slugify(name)) setSlug(slugify(value));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -51,7 +51,7 @@ export default function NewClubForm() {
       router.push("/login");
       return;
     }
-    const finalSlug = slug.trim() || slugify(name) || "club";
+    const finalSlug = slugify(name) || "club";
     setLoading(true);
     const { data: club, error: insertClubError } = await supabase
       .from("clubs")
@@ -80,10 +80,19 @@ export default function NewClubForm() {
         .from(BUCKET_LOGO)
         .upload(path, logoFile, { upsert: true });
       if (uploadError) {
-        toast.error("Logo : " + (uploadError.message ?? "upload impossible. Vérifiez les policies Storage (bucket club-logos)."));
+        toast.error(
+          "Logo : " +
+            (uploadError.message ??
+              "upload impossible. Vérifiez les policies Storage (bucket club-logos)."),
+        );
       } else {
-        const { data: urlData } = supabase.storage.from(BUCKET_LOGO).getPublicUrl(path);
-        await supabase.from("clubs").update({ logo_url: urlData.publicUrl }).eq("id", clubId);
+        const { data: urlData } = supabase.storage
+          .from(BUCKET_LOGO)
+          .getPublicUrl(path);
+        await supabase
+          .from("clubs")
+          .update({ logo_url: urlData.publicUrl })
+          .eq("id", clubId);
       }
     }
 
@@ -140,7 +149,13 @@ export default function NewClubForm() {
           <div className="flex items-center gap-4">
             {logoPreview && (
               <div className="relative h-16 w-16 rounded border border-border overflow-hidden bg-muted">
-                <Image src={logoPreview} alt="Aperçu" fill className="object-contain" unoptimized />
+                <Image
+                  src={logoPreview}
+                  alt="Aperçu"
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
               </div>
             )}
             <div className="flex gap-2">
@@ -183,22 +198,6 @@ export default function NewClubForm() {
               )}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Créez un bucket &quot;club-logos&quot; (public) dans Supabase Storage si besoin.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="slug">Slug (URL)</Label>
-          <Input
-            id="slug"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="fc-mon-club"
-            disabled={loading}
-          />
-          <p className="text-xs text-muted-foreground">
-            Utilisé dans l&apos;URL : /dashboard/clubs/[slug]
-          </p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">

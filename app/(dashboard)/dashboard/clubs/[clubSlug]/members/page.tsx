@@ -78,12 +78,33 @@ export default async function ClubMembersPage({
     .from("profiles")
     .select("id, full_name, email")
     .in("id", userIds);
-  const profileMap = new Map(
+  const profileMap = new Map<string, { full_name: string | null; email: string | null }>(
     (profiles ?? []).map((p) => [
       (p as { id: string }).id,
       p as { full_name: string | null; email: string | null },
     ])
   );
+  // Pour les utilisateurs sans profil (ou profil vide), récupérer nom/email depuis auth
+  const missingUserIds = userIds.filter((id) => {
+    const p = profileMap.get(id);
+    return !p || ((p.full_name == null || p.full_name.trim() === "") && (p.email == null || p.email.trim() === ""));
+  });
+  if (missingUserIds.length > 0) {
+    const admin = createAdminClient();
+    for (const uid of missingUserIds) {
+      const { data: authUser } = await admin.auth.admin.getUserById(uid);
+      const u = authUser?.user;
+      if (u) {
+        const fullName = (u.user_metadata?.full_name as string)?.trim() || null;
+        const email = (u.email as string)?.trim() || null;
+        const existing = profileMap.get(uid);
+        profileMap.set(uid, {
+          full_name: fullName || (existing?.full_name ?? null),
+          email: email || (existing?.email ?? null),
+        });
+      }
+    }
+  }
   const membersList = membersListRaw.map((m) => ({
     ...m,
     profiles: profileMap.get(m.user_id) ?? null,

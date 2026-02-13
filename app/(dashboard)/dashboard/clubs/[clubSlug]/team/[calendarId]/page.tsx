@@ -83,6 +83,8 @@ export default function TeamCalendarPage() {
   const [copiedParents, setCopiedParents] = useState(false);
   const [eventIdToCancel, setEventIdToCancel] = useState<string | null>(null);
   const [homeAwayFilter, setHomeAwayFilter] = useState<HomeAwayFilter>("all");
+  const [showDeleteTeamDialog, setShowDeleteTeamDialog] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState(false);
 
   const domicileAddress = club?.address ?? "";
   const clubLogoUrl = club?.logo_url ?? null;
@@ -321,6 +323,44 @@ export default function TeamCalendarPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={showDeleteTeamDialog} onOpenChange={setShowDeleteTeamDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette équipe ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L&apos;équipe « {calendar.team_name} » et son calendrier seront définitivement
+              supprimés. Les parents ne pourront plus accéder au lien. Cette action
+              est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (e) => {
+                e.preventDefault();
+                setDeletingTeam(true);
+                try {
+                  const res = await fetch(`/api/calendars/${calendar.id}`, { method: "DELETE" });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error ?? "Erreur lors de la suppression");
+                  }
+                  toast.success("Équipe supprimée.");
+                  router.push(`/dashboard/clubs/${clubSlug}`);
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Erreur lors de la suppression");
+                } finally {
+                  setDeletingTeam(false);
+                }
+              }}
+            >
+              {deletingTeam ? "Suppression…" : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <header className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8">
         <Button variant="ghost" size="icon" asChild aria-label="Retour au club">
           <Link href={`/dashboard/clubs/${clubSlug}`}>
@@ -345,6 +385,16 @@ export default function TeamCalendarPage() {
         <span className="inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-2.5 py-0.5 text-xs font-medium">
           <Shield className="h-3.5 w-3.5" /> Admin
         </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+          onClick={() => setShowDeleteTeamDialog(true)}
+          disabled={deletingTeam}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Supprimer l&apos;équipe
+        </Button>
       </header>
 
       <section className="mb-6 sm:mb-8">
