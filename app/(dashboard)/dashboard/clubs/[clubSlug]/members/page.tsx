@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -47,11 +48,25 @@ export default async function ClubMembersPage({
     .from("club_members")
     .select("id, user_id, role")
     .eq("club_id", c.id);
-  const { data: invites } = await supabase
-    .from("club_invites")
-    .select("id, email, role, token, expires_at, created_at")
-    .eq("club_id", c.id)
-    .gt("expires_at", new Date().toISOString());
+  // Charger les invitations avec le client admin pour contourner la RLS
+  // (l'owner doit toujours voir la liste ; la policy "Owners can view" peut ne pas être appliquée)
+  let invites: { id: string; email: string; role: string; token: string; expires_at: string; created_at: string }[] | null = null;
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("club_invites")
+      .select("id, email, role, token, expires_at, created_at")
+      .eq("club_id", c.id)
+      .order("created_at", { ascending: false });
+    invites = data;
+  } catch {
+    const { data } = await supabase
+      .from("club_invites")
+      .select("id, email, role, token, expires_at, created_at")
+      .eq("club_id", c.id)
+      .order("created_at", { ascending: false });
+    invites = data;
+  }
 
   const membersListRaw = (members ?? []) as {
     id: string;
@@ -82,8 +97,12 @@ export default async function ClubMembersPage({
     created_at: string;
   }[];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const now = new Date().toISOString();
+  const pendingInvitesCount = invitesList.filter(
+    (inv) => inv.expires_at > now
+  ).length;
   const coachCount =
-    membersListRaw.filter((m) => m.role === "coach").length + invitesList.length;
+    membersListRaw.filter((m) => m.role === "coach").length + pendingInvitesCount;
   const canInvite = coachCount < maxCoaches;
 
   return (
@@ -112,6 +131,7 @@ export default async function ClubMembersPage({
         members={membersList}
         invites={invitesList}
         appUrl={appUrl}
+        currentUserId={user.id}
       />
     </div>
   );

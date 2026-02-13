@@ -8,22 +8,22 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?redirect=/dashboard");
 
-  const { data: memberships } = await supabase
+  const { data: membership } = await supabase
     .from("club_members")
-    .select("club_id, clubs(slug, name)")
-    .eq("user_id", user.id);
+    .select("clubs(slug, name)")
+    .eq("user_id", user.id)
+    .eq("role", "owner")
+    .maybeSingle();
 
-  const clubs = (memberships ?? [])
-    .map((m) => {
-      const row = m as { clubs: { slug: string; name: string } | { slug: string; name: string }[] | null };
-      const c = row.clubs;
-      return Array.isArray(c) ? c[0] : c;
-    })
-    .filter(Boolean) as { slug: string; name: string }[];
+  const club = membership?.clubs
+    ? Array.isArray(membership.clubs)
+      ? membership.clubs[0]
+      : membership.clubs
+    : null;
 
-  if (clubs.length === 0) {
+  if (!club) {
     redirect("/dashboard/clubs/new");
   }
 
-  redirect(`/dashboard/clubs/${clubs[0].slug}`);
+  redirect(`/dashboard/clubs/${(club as { slug: string }).slug}`);
 }

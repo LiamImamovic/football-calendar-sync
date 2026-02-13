@@ -43,14 +43,31 @@ function CopyInviteLinkButton({
   );
 }
 
+function memberDisplayName(
+  m: Member,
+  currentUserId: string
+): { primary: string; secondary: string | null } {
+  const isYou = m.user_id === currentUserId;
+  const name = m.profiles?.full_name?.trim() || m.profiles?.email || null;
+  if (isYou) {
+    return { primary: "Vous", secondary: name || null };
+  }
+  return {
+    primary: name || "Membre",
+    secondary: m.profiles?.email && name !== m.profiles?.email ? m.profiles.email : null,
+  };
+}
+
 export function MembersList({
   members,
   invites,
   appUrl,
+  currentUserId,
 }: {
   members: Member[];
   invites: Invite[];
   appUrl: string;
+  currentUserId: string;
 }) {
   return (
     <div className="space-y-6">
@@ -61,26 +78,27 @@ export function MembersList({
           l&apos;invitation).
         </p>
         <ul className="space-y-2">
-          {members.map((m) => (
-            <li
-              key={m.id}
-              className="flex items-center justify-between py-2 border-b border-border last:border-0"
-            >
-              <div>
-                <p className="font-medium">
-                  {m.profiles?.full_name || m.profiles?.email || m.user_id}
-                </p>
-                {m.profiles?.email && (
-                  <p className="text-sm text-muted-foreground">
-                    {m.profiles.email}
-                  </p>
-                )}
-              </div>
-              <span className="text-sm rounded-full bg-muted px-2 py-0.5">
-                {m.role === "owner" ? "Propriétaire" : "Coach"}
-              </span>
-            </li>
-          ))}
+          {members.map((m) => {
+            const { primary, secondary } = memberDisplayName(m, currentUserId);
+            return (
+              <li
+                key={m.id}
+                className="flex items-center justify-between py-2 border-b border-border last:border-0"
+              >
+                <div>
+                  <p className="font-medium">{primary}</p>
+                  {secondary && (
+                    <p className="text-sm text-muted-foreground">
+                      {secondary}
+                    </p>
+                  )}
+                </div>
+                <span className="text-sm rounded-full bg-muted px-2 py-0.5">
+                  {m.role === "owner" ? "Propriétaire" : "Coach"}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
@@ -119,10 +137,18 @@ export function MembersList({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5">
-                    En attente
-                  </span>
-                  <CopyInviteLinkButton token={inv.token} appUrl={appUrl} />
+                  {new Date(inv.expires_at) > new Date() ? (
+                    <>
+                      <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5">
+                        En attente
+                      </span>
+                      <CopyInviteLinkButton token={inv.token} appUrl={appUrl} />
+                    </>
+                  ) : (
+                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                      Expirée
+                    </span>
+                  )}
                 </div>
               </li>
             ))}

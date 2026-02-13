@@ -39,8 +39,8 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="flex-1 flex flex-col items-center justify-center px-4 py-16 sm:py-20 text-center">
-        <div className="landing-animate landing-animate-delay-1 flex justify-center">
-          <TypewriterHeading />
+        <div className="landing-animate landing-animate-delay-1 flex justify-center w-full">
+          <TypewriterHeading className="whitespace-nowrap" />
         </div>
         <p className="mt-6 text-lg text-muted-foreground max-w-xl landing-animate landing-animate-delay-2">
           Créez un calendrier pour votre équipe, partagez-le aux parents.
