@@ -31,6 +31,11 @@ function LoginForm() {
       setError("Email ou mot de passe incorrect.");
       return;
     }
+    // Redirection complète pour que les cookies de session soient bien envoyés sur /invite
+    if (redirect.startsWith("/invite")) {
+      window.location.href = redirect;
+      return;
+    }
     router.push(redirect);
     router.refresh();
   }

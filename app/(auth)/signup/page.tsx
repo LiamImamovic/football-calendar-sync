@@ -33,6 +33,11 @@ function SignupForm() {
       ? `${baseUrl}/auth/callback?next=${encodeURIComponent(`/invite?token=${inviteToken}`)}`
       : `${baseUrl}/auth/callback?next=/dashboard`;
 
+    // Garder le token d'invitation en cookie pour le callback après confirmation email
+    if (inviteToken && typeof document !== "undefined") {
+      document.cookie = `pending_invite_token=${encodeURIComponent(inviteToken)}; path=/; max-age=3600; samesite=lax`;
+    }
+
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -48,11 +53,12 @@ function SignupForm() {
     }
     setSuccess(true);
     router.refresh();
-    // Si pas de confirmation email, l'utilisateur est déjà connecté → aller accepter l'invite
+    // Si pas de confirmation email, l'utilisateur est déjà connecté → redirection complète vers /invite
     if (inviteToken) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.push(`/invite?token=${inviteToken}`);
+        window.location.href = `/invite?token=${inviteToken}`;
+        return;
       }
     }
   }
