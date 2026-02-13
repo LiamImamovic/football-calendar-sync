@@ -49,7 +49,7 @@ export default async function ClubMembersPage({
     .eq("club_id", c.id);
   const { data: invites } = await supabase
     .from("club_invites")
-    .select("id, email, role, expires_at")
+    .select("id, email, role, token, expires_at, created_at")
     .eq("club_id", c.id)
     .gt("expires_at", new Date().toISOString());
 
@@ -77,8 +77,11 @@ export default async function ClubMembersPage({
     id: string;
     email: string;
     role: string;
+    token: string;
     expires_at: string;
+    created_at: string;
   }[];
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const coachCount =
     membersListRaw.filter((m) => m.role === "coach").length + invitesList.length;
   const canInvite = coachCount < maxCoaches;
@@ -105,7 +108,11 @@ export default async function ClubMembersPage({
         </CardContent>
       </Card>
 
-      <MembersList members={membersList} invites={invitesList} />
+      <MembersList
+        members={membersList}
+        invites={invitesList}
+        appUrl={appUrl}
+      />
     </div>
   );
 }
